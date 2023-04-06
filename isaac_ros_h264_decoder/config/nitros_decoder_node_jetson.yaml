@@ -16,17 +16,38 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ---
-name: color_converter
+name: decoder
 components:
-- name: data_receiver
+- name: input_image
   type: nvidia::gxf::DoubleBufferReceiver
   parameters:
     capacity: 12
     policy: 0
 - type: nvidia::gxf::MessageAvailableSchedulingTerm
   parameters:
-    receiver: data_receiver
+    receiver: input_image
     min_size: 1
+- name: pool
+  type: nvidia::gxf::BlockMemoryPool
+  parameters:
+    storage_type: 1
+    block_size: 6912000
+    num_blocks: 40
+- name: decoder_request
+  type: nvidia::isaac::DecoderRequest
+  parameters:
+    image_receiver: input_image
+    pool: pool
+    input_width: 1920
+    input_height: 1080
+    async_scheduling_term: decoder_response/async_st
+- name: decoder_request_receptive_scheduling_term
+  type: nvidia::isaac::DecoderRequestReceptiveSchedulingTerm
+  parameters:
+    decoder_impl: decoder/decoder_request
+---
+name: decoder_response
+components:
 - name: data_transmitter
   type: nvidia::gxf::DoubleBufferTransmitter
   parameters:
@@ -36,16 +57,43 @@ components:
   parameters:
     transmitter: data_transmitter
     min_size: 1
+- type: nvidia::isaac::DecoderResponse
+  parameters:
+    decoder_impl: decoder/decoder_request
+    tx: data_transmitter
+- name: async_st
+  type: nvidia::gxf::AsynchronousSchedulingTerm
+---
+name: color_converter
+components:
+- name: data_receiver
+  type: nvidia::gxf::DoubleBufferReceiver
+  parameters:
+    capacity: 1
+    policy: 0
+- type: nvidia::gxf::MessageAvailableSchedulingTerm
+  parameters:
+    receiver: data_receiver
+    min_size: 1
+- name: data_transmitter
+  type: nvidia::gxf::DoubleBufferTransmitter
+  parameters:
+    capacity: 1
+    policy: 0
+- type: nvidia::gxf::DownstreamReceptiveSchedulingTerm
+  parameters:
+    transmitter: data_transmitter
+    min_size: 1
 - name: pool
   type: nvidia::gxf::BlockMemoryPool
   parameters:
     storage_type: 1
-    block_size: 6278400
+    block_size: 6912000
     num_blocks: 40
 - name: color_converter_operator
   type: nvidia::cvcore::tensor_ops::StreamConvertColorFormat
   parameters:
-    output_type: "NV12"
+    output_type: "RGB_U8"
     receiver: data_receiver
     transmitter: data_transmitter
     pool: pool
@@ -65,60 +113,6 @@ components:
   parameters:
     backend_type: "VPI"
     engine_type: "GPU"
----
-name: encoder
-components:
-- name: data_receiver
-  type: nvidia::gxf::DoubleBufferReceiver
-  parameters:
-    capacity: 1
-    policy: 0
-- type: nvidia::gxf::MessageAvailableSchedulingTerm
-  parameters:
-    receiver: data_receiver
-    min_size: 1
-- name: pool
-  type: nvidia::gxf::BlockMemoryPool
-  parameters:
-    storage_type: 0
-    block_size: 6912000
-    num_blocks: 40
-- name: encoder_request
-  type: nvidia::isaac::EncoderRequest
-  parameters:
-    image_receiver: data_receiver
-    pool: pool
-    profile: 0
-    qp: 20
-    hw_preset_type: 0
-    input_width: 1920
-    input_height: 1080
-    input_format: nv12
-    config: pframe
-    iframe_interval: 5
-    async_scheduling_term: encoder_response/async_st
-- name: encoder_request_receptive_scheduling_term
-  type: nvidia::isaac::EncoderRequestReceptiveSchedulingTerm
-  parameters:
-    encoder_impl: encoder/encoder_request
----
-name: encoder_response
-components:
-- name: output
-  type: nvidia::gxf::DoubleBufferTransmitter
-  parameters:
-    capacity: 1
-    policy: 0
-- type: nvidia::gxf::DownstreamReceptiveSchedulingTerm
-  parameters:
-    transmitter: output
-    min_size: 1
-- type: nvidia::isaac::EncoderResponse
-  parameters:
-    encoder_impl: encoder/encoder_request
-    tx: output
-- name: async_st
-  type: nvidia::gxf::AsynchronousSchedulingTerm
 ---
 name: vault
 components:
@@ -142,11 +136,11 @@ name: connections
 components:
 - type: nvidia::gxf::Connection
   parameters:
-    source: color_converter/data_transmitter
-    target: encoder/data_receiver
+    source: decoder_response/data_transmitter
+    target: color_converter/data_receiver
 - type: nvidia::gxf::Connection
   parameters:
-    source: encoder_response/output
+    source: color_converter/data_transmitter
     target: vault/signal
 ---
 components:

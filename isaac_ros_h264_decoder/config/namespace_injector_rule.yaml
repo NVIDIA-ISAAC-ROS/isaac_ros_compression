@@ -22,3 +22,9 @@ body:
   components:
     - type: nvidia::cvcore::tensor_ops::StreamConvertColorFormat
       path_parameter_keys: [input_adapter, output_adapter, stream]
+    - type: nvidia::isaac::DecoderRequest
+      path_parameter_keys: [async_scheduling_term]
+    - type: nvidia::isaac::DecoderResponse
+      path_parameter_keys: [decoder_impl]
+    - type: nvidia::isaac::DecoderRequestReceptiveSchedulingTerm
+      path_parameter_keys: [decoder_impl]

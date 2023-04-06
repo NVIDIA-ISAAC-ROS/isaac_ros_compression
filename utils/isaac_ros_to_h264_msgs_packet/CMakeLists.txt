@@ -15,7 +15,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.23.2)
 project(isaac_ros_to_h264_msgs_packet LANGUAGES PYTHON)
 
 # Default to C++17
@@ -52,7 +52,7 @@ ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
-  isaac_ros_to_h264_msgs_packet/ToH264MsgsPacket.py  
+  isaac_ros_to_h264_msgs_packet/ToH264MsgsPacket.py
   DESTINATION lib/${PROJECT_NAME}
   )
 

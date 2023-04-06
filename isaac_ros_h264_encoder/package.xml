@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_h264_encoder</name>
-  <version>0.20.0</version>
+  <version>0.30.0</version>
   <description>H.264 Encoder</description>
 
   <maintainer email="yuankunz@nvidia.com">Yuankun Zhu</maintainer>
@@ -40,6 +40,7 @@
   <depend>sensor_msgs</depend>
   <depend>sensor_msgs_py</depend>
   <depend>isaac_ros_common</depend>
+  <depend>isaac_ros_image_proc</depend>
   <depend>isaac_ros_nitros</depend>
   <depend>isaac_ros_nitros_image_type</depend>
   <depend>isaac_ros_nitros_compressed_image_type</depend>

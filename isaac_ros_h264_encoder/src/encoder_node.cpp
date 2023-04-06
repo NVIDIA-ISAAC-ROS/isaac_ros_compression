@@ -49,12 +49,12 @@ constexpr char APP_YAML_FILENAME[] = "config/nitros_encoder_node.yaml";
 constexpr char PACKAGE_NAME[] = "isaac_ros_h264_encoder";
 
 const std::vector<std::pair<std::string, std::string>> EXTENSIONS = {
-  {"isaac_ros_nitros", "gxf/std/libgxf_std.so"},
-  {"isaac_ros_nitros", "gxf/multimedia/libgxf_multimedia.so"},
-  {"isaac_ros_nitros", "gxf/cuda/libgxf_cuda.so"},
-  {"isaac_ros_nitros", "gxf/serialization/libgxf_serialization.so"},
-  {"isaac_ros_nitros", "gxf/tensorops/libgxf_tensorops.so"},
-  {"isaac_ros_nitros", "gxf/libgxf_encoder_extension.so"},
+  {"isaac_ros_gxf", "gxf/lib/std/libgxf_std.so"},
+  {"isaac_ros_gxf", "gxf/lib/multimedia/libgxf_multimedia.so"},
+  {"isaac_ros_gxf", "gxf/lib/cuda/libgxf_cuda.so"},
+  {"isaac_ros_gxf", "gxf/lib/serialization/libgxf_serialization.so"},
+  {"isaac_ros_image_proc", "gxf/lib/image_proc/libgxf_tensorops.so"},
+  {"isaac_ros_h264_encoder", "gxf/lib/codec/libgxf_codec_extension.so"},
 };
 const std::vector<std::string> PRESET_EXTENSION_SPEC_NAMES = {
   "isaac_ros_h264_encoder"
@@ -98,9 +98,10 @@ EncoderNode::EncoderNode(const rclcpp::NodeOptions & options)
   input_width_(declare_parameter<int32_t>("input_width", 1920)),
   input_height_(declare_parameter<int32_t>("input_height", 1200)),
   qp_(declare_parameter<int32_t>("qp", 20)),
-  hw_preset_type_(declare_parameter<int32_t>("hw_preset_type", 3)),
+  hw_preset_type_(declare_parameter<int32_t>("hw_preset_type", 0)),
   profile_(declare_parameter<int32_t>("profile", 0)),
-  config_(declare_parameter<std::string>("config", "lossy"))
+  iframe_interval_(declare_parameter<int32_t>("iframe_interval", 5)),
+  config_(declare_parameter<std::string>("config", "pframe"))
 {
   RCLCPP_DEBUG(get_logger(), "[EncoderNode] Constructor");
 
@@ -113,6 +114,10 @@ EncoderNode::EncoderNode(const rclcpp::NodeOptions & options)
 void EncoderNode::preLoadGraphCallback()
 {
   RCLCPP_INFO(get_logger(), "[EncoderNode] preLoadGraphCallback().");
+
+  NitrosNode::preLoadGraphSetParameter(
+    "encoder", "nvidia::isaac::EncoderRequest", "config",
+    config_);
 }
 
 void EncoderNode::postLoadGraphCallback()
@@ -140,9 +145,9 @@ void EncoderNode::postLoadGraphCallback()
     "encoder", "nvidia::isaac::EncoderRequest", "profile",
     (uint32_t)profile_);
 
-  getNitrosContext().setParameterStr(
-    "encoder", "nvidia::isaac::EncoderRequest", "config",
-    config_);
+  getNitrosContext().setParameterInt32(
+    "encoder", "nvidia::isaac::EncoderRequest", "iframe_interval",
+    iframe_interval_);
 }
 
 EncoderNode::~EncoderNode() {}
