@@ -2,7 +2,9 @@
 
 In this tutorial, we'll demonstrate how you can perform H.264 encoding using a [RealSense](https://www.intel.com/content/www/us/en/architecture-and-technology/realsense-overview.html) camera and [isaac_ros_h264_encoder](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_compression/blob/main/isaac_ros_h264_encoder/src/encoder_node.cpp), and save the compressed images into a rosbag.  
 
-> Note: `isaac_ros_h264_encoder` needs to run on a Jetson platform. This tutorial has been tested with a RealSense D455 or D435 connected to a Jetson Xavier AGX.
+> **Note**: `isaac_ros_h264_encoder` needs to run on a Jetson platform.
+<!-- Split blockquote -->
+> **Note**: This tutorial requires a compatible RealSense camera from the list available [here](https://github.com/NVIDIA-ISAAC-ROS/.github/blob/main/profile/realsense-setup.md#camera-compatibility).
 
 1. Complete the [RealSense setup tutorial](https://github.com/NVIDIA-ISAAC-ROS/.github/blob/main/profile/realsense-setup.md).
 2. Complete steps 1-2 described in the [quickstart guide](../README.md#quickstart).

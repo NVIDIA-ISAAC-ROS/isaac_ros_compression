@@ -54,6 +54,7 @@ private:
   int32_t qp_;
   int32_t hw_preset_type_;
   int32_t profile_;
+  int32_t iframe_interval_;
   std::string config_;
 };
 

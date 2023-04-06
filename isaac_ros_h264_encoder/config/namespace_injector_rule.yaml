@@ -25,6 +25,6 @@ body:
     - type: nvidia::isaac::EncoderRequest
       path_parameter_keys: [async_scheduling_term]
     - type: nvidia::isaac::EncoderResponse
-      path_parameter_keys: [encoder_imp]
+      path_parameter_keys: [encoder_impl]
     - type: nvidia::isaac::EncoderRequestReceptiveSchedulingTerm
-      path_parameter_keys: [encoder_imp]
+      path_parameter_keys: [encoder_impl]

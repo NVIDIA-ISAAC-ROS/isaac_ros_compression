@@ -38,6 +38,12 @@ namespace h264_decoder
 
 using nvidia::gxf::optimizer::GraphIOGroupSupportedDataTypesInfoList;
 
+#ifdef __x86_64__
+constexpr char APP_YAML_FILENAME[] = "config/nitros_decoder_node.yaml";
+#else
+constexpr char APP_YAML_FILENAME[] = "config/nitros_decoder_node_jetson.yaml";
+#endif
+
 constexpr char INPUT_COMPONENT_KEY[] = "decoder/input_image";
 constexpr char INPUT_DEFAULT_FORMAT[] = "nitros_compressed_image";
 constexpr char INPUT_TOPIC_NAME[] = "image_compressed";
@@ -46,21 +52,18 @@ constexpr char OUTPUT_COMPONENT_KEY[] = "vault/vault";
 constexpr char OUTPUT_DEFAULT_FORMAT[] = "nitros_image_rgb8";
 constexpr char OUTPUT_TOPIC_NAME[] = "image_uncompressed";
 
-constexpr char APP_YAML_FILENAME[] = "config/nitros_decoder_node.yaml";
 constexpr char PACKAGE_NAME[] = "isaac_ros_h264_decoder";
 
 const std::vector<std::pair<std::string, std::string>> EXTENSIONS = {
-  {"isaac_ros_nitros", "gxf/std/libgxf_std.so"},
-  {"isaac_ros_nitros", "gxf/multimedia/libgxf_multimedia.so"},
-  {"isaac_ros_nitros", "gxf/cuda/libgxf_cuda.so"},
-  {"isaac_ros_nitros", "gxf/serialization/libgxf_serialization.so"},
-  {"isaac_ros_nitros", "gxf/tensorops/libgxf_tensorops.so"},
-  {"isaac_ros_nitros", "gxf/libgxf_decoder_extension.so"},
+  {"isaac_ros_gxf", "gxf/lib/std/libgxf_std.so"},
+  {"isaac_ros_gxf", "gxf/lib/multimedia/libgxf_multimedia.so"},
+  {"isaac_ros_gxf", "gxf/lib/cuda/libgxf_cuda.so"},
+  {"isaac_ros_gxf", "gxf/lib/serialization/libgxf_serialization.so"},
+  {"isaac_ros_image_proc", "gxf/lib/image_proc/libgxf_tensorops.so"},
+  {"isaac_ros_h264_decoder", "gxf/lib/codec/libgxf_codec_extension.so"},
 };
-const std::vector<std::string> PRESET_EXTENSION_SPEC_NAMES = {
-  "isaac_ros_h264_decoder"
-};
-const std::vector<std::string> EXTENSION_SPEC_FILENAMES = {};
+const std::vector<std::string> PRESET_EXTENSION_SPEC_NAMES = {};
+const std::vector<std::string> EXTENSION_SPEC_FILENAMES = {"config/spec.yaml"};
 const std::vector<std::string> GENERATOR_RULE_FILENAMES = {
   "config/namespace_injector_rule.yaml"
 };
@@ -115,8 +118,8 @@ void DecoderNode::preLoadGraphCallback()
 void DecoderNode::postLoadGraphCallback()
 {
   RCLCPP_INFO(get_logger(), "[DecoderNode] postLoadGraphCallback().");
-
   // Update decoder parameters
+  #ifdef __x86_64__
   getNitrosContext().setParameterUInt32(
     "decoder", "nvidia::isaac::Decoder", "input_width",
     (uint32_t)input_width_);
@@ -124,6 +127,15 @@ void DecoderNode::postLoadGraphCallback()
   getNitrosContext().setParameterUInt32(
     "decoder", "nvidia::isaac::Decoder", "input_height",
     (uint32_t)input_height_);
+  #else
+  getNitrosContext().setParameterUInt32(
+    "decoder", "nvidia::isaac::DecoderRequest", "input_width",
+    (uint32_t)input_width_);
+
+  getNitrosContext().setParameterUInt32(
+    "decoder", "nvidia::isaac::DecoderRequest", "input_height",
+    (uint32_t)input_height_);
+  #endif
 }
 
 DecoderNode::~DecoderNode() {}

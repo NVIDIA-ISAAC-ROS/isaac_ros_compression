@@ -1,11 +1,11 @@
 # Decoding Jetson H.264 images on non-NVIDIA powered systems
 
-<div align="center"><img alt="Decoding Jetson H.264 images on non-NVIDIA powered systems sample expected output" src="../resources/image_view_h264_decoded.jpg" width="400px"/></div>
+<div align="center"><img alt="Decoding Jetson H.264 images on non-NVIDIA powered systems sample expected output" src="../resources/image_view_h264_decoded.png" width="400px"/></div>
 
 ## Overview
 
 Using hardware-accelerated Isaac ROS compression on Jetson to H.264 encode data for playback through Isaac ROS H.264 decoder on NVIDIA-powered x86_64 is fast and efficient. However,
-you may have need to decode recorded data on x86_64 systems that are not NVIDIA-powered. Fortunately, the output of the `isaac_ros_h264_encoder` package can easily be reformatted to work with other available ROS2 decoder packages.
+you may have need to decode recorded data on x86_64 systems that are not NVIDIA-powered. Fortunately, the output of the `isaac_ros_h264_encoder` package can easily be reformatted to work with other available ROS 2 decoder packages.
 
 This tutorial shows you how to replay a rosbag recorded on a Jetson using a third-party H.264 decoder [image_transport plugin](https://github.com/KDharmarajanDev/h264_image_transport.git) used in [FogROS2](https://github.com/berkeleyAutomation/FogROS2).
 
