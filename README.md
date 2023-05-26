@@ -35,11 +35,12 @@ ROS 2 relies on `image_transport_plugins` for CPU based compression.  We recomme
 
 The following table summarizes the per-platform performance statistics of sample graphs that use this package, with links included to the full benchmark output. These benchmark configurations are taken from the [Isaac ROS Benchmark](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark#list-of-isaac-ros-benchmarks) collection, based on the [`ros2_benchmark`](https://github.com/NVIDIA-ISAAC-ROS/ros2_benchmark) framework.
 
-| Sample Graph                                                                                                                                                      | Input Size | AGX Orin                                                                                                                                                | x86_64 w/ RTX 3060 Ti                                                                                                                                     |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [H.264 Decoder Node](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/scripts//isaac_ros_h264_decoder_node.py)                           | 1080p      | [144 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_decoder_node-agx_orin.json)<br>15 ms         | [290 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_decoder_node-x86_64_rtx_3060Ti.json)<br>3.0 ms |
-| [H.264 Encoder Node<br>I-frame Support](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/scripts//isaac_ros_h264_encoder_iframe_node.py) | 1080p      | [305 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_iframe_node-agx_orin.json)<br>11 ms  | --                                                                                                                                                        |
-| [H.264 Encoder Node<br>P-frame Support](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/scripts//isaac_ros_h264_encoder_pframe_node.py) | 1080p      | [293 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_pframe_node-agx_orin.json)<br>9.7 ms | --                                                                                                                                                        |
+| Sample Graph                                                                                                                                                      | Input Size | AGX Orin                                                                                                                                               | x86_64 w/ RTX 4060 Ti                                                                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [H.264 Decoder Node](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/scripts//isaac_ros_h264_decoder_node.py)                           | 1080p      | [155 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_decoder_node-agx_orin.json)<br>15 ms        | [521 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_decoder_node-nuc_4060ti.json)<br>4.1 ms |
+| [H.264 Encoder Node<br>I-frame Support](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/scripts//isaac_ros_h264_encoder_iframe_node.py) | 1080p      | [401 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_iframe_node-agx_orin.json)<br>11 ms | --                                                                                                                                                 |
+| [H.264 Encoder Node<br>P-frame Support](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/scripts//isaac_ros_h264_encoder_pframe_node.py) | 1080p      | [461 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_pframe_node-agx_orin.json)<br>12 ms | --                                                                                                                                                 |
+
 
 ## Table of Contents
 
@@ -79,7 +80,7 @@ The following table summarizes the per-platform performance statistics of sample
 
 ## Latest Update
 
-Update 2023-04-05: P-frame encoder and Tegra decoder support
+Update 2023-05-25: Performance improvements.
 
 ## Supported Platforms
 
@@ -308,5 +309,6 @@ For solutions to problems with Isaac ROS, check [here](https://github.com/NVIDIA
 
 | Date       | Changes                                   |
 | ---------- | ----------------------------------------- |
+| 2023-05-25 | Performance improvements                  |
 | 2023-04-05 | P-frame encoder and Tegra decoder support |
 | 2022-10-19 | Initial release                           |
