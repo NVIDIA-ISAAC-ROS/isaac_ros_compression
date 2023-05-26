@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ constexpr char INPUT_COMPONENT_KEY[] = "decoder/input_image";
 constexpr char INPUT_DEFAULT_FORMAT[] = "nitros_compressed_image";
 constexpr char INPUT_TOPIC_NAME[] = "image_compressed";
 
-constexpr char OUTPUT_COMPONENT_KEY[] = "vault/vault";
+constexpr char OUTPUT_COMPONENT_KEY[] = "sink/sink";
 constexpr char OUTPUT_DEFAULT_FORMAT[] = "nitros_image_rgb8";
 constexpr char OUTPUT_TOPIC_NAME[] = "image_uncompressed";
 
@@ -62,8 +62,10 @@ const std::vector<std::pair<std::string, std::string>> EXTENSIONS = {
   {"isaac_ros_image_proc", "gxf/lib/image_proc/libgxf_tensorops.so"},
   {"isaac_ros_h264_decoder", "gxf/lib/codec/libgxf_codec_extension.so"},
 };
-const std::vector<std::string> PRESET_EXTENSION_SPEC_NAMES = {};
-const std::vector<std::string> EXTENSION_SPEC_FILENAMES = {"config/spec.yaml"};
+const std::vector<std::string> PRESET_EXTENSION_SPEC_NAMES = {
+  "isaac_ros_h264_decoder"
+};
+const std::vector<std::string> EXTENSION_SPEC_FILENAMES = {};
 const std::vector<std::string> GENERATOR_RULE_FILENAMES = {
   "config/namespace_injector_rule.yaml"
 };

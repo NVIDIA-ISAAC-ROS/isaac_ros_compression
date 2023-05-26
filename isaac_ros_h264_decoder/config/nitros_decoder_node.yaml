@@ -1,6 +1,6 @@
 %YAML 1.2
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ components:
 - name: data_receiver
   type: nvidia::gxf::DoubleBufferReceiver
   parameters:
-    capacity: 1
+    capacity: 2
     policy: 0
 - type: nvidia::gxf::MessageAvailableSchedulingTerm
   parameters:
@@ -78,7 +78,7 @@ components:
     block_size: 6912000
     num_blocks: 40
 - name: color_converter_operator
-  type: nvidia::cvcore::tensor_ops::StreamConvertColorFormat
+  type: nvidia::isaac::tensor_ops::StreamConvertColorFormat
   parameters:
     output_type: "RGB_U8"
     receiver: data_receiver
@@ -92,16 +92,16 @@ components:
 name: global
 components:
 - name: adapter
-  type: nvidia::cvcore::tensor_ops::ImageAdapter
+  type: nvidia::isaac::tensor_ops::ImageAdapter
   parameters:
     message_type: "VideoBuffer"
 - name: stream
-  type: nvidia::cvcore::tensor_ops::TensorStream
+  type: nvidia::isaac::tensor_ops::TensorStream
   parameters:
     backend_type: "VPI"
     engine_type: "GPU"
 ---
-name: vault
+name: sink
 components:
 - name: signal
   type: nvidia::gxf::DoubleBufferReceiver
@@ -112,12 +112,10 @@ components:
   parameters:
     receiver: signal
     min_size: 1
-- name: vault
-  type: nvidia::gxf::Vault
+- name: sink
+  type: nvidia::isaac_ros::MessageRelay
   parameters:
     source: signal
-    max_waiting_count: 1
-    drop_waiting: false
 ---
 name: connections
 components:
@@ -128,12 +126,17 @@ components:
 - type: nvidia::gxf::Connection
   parameters:
     source: color_converter/data_transmitter
-    target: vault/signal
+    target: sink/signal
 ---
 components:
-- type: nvidia::gxf::GreedyScheduler
+- name: clock
+  type: nvidia::gxf::RealtimeClock
+- type: nvidia::gxf::MultiThreadScheduler
   parameters:
     clock: clock
     stop_on_deadlock: false
-- name: clock
-  type: nvidia::gxf::RealtimeClock
+    check_recession_period_ms: 1
+    worker_thread_number: 2
+- type: nvidia::gxf::JobStatistics
+  parameters:
+    clock: clock
