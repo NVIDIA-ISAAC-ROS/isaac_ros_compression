@@ -15,7 +15,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-cmake_minimum_required(VERSION 3.23.2)
+cmake_minimum_required(VERSION 3.22.1)
 project(isaac_ros_h264_decoder LANGUAGES C CXX)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -34,13 +34,19 @@ set(node_plugins "${node_plugins}nvidia::isaac_ros::h264_decoder::DecoderNode;$<
 
 # Codec
 add_subdirectory(gxf/codec)
-install(TARGETS gxf_codec_extension DESTINATION share/${PROJECT_NAME}/gxf/lib/codec)
+install(TARGETS gxf_video_decoder_extension DESTINATION share/${PROJECT_NAME}/gxf/lib/codec)
 
 ### End extensions
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
+
+  # The FindPythonInterp and FindPythonLibs modules are removed
+  if(POLICY CMP0148)
+    cmake_policy(SET CMP0148 OLD)
+  endif()
 
   find_package(launch_testing_ament_cmake REQUIRED)
   add_launch_test(test/isaac_ros_decoder_pol.py)

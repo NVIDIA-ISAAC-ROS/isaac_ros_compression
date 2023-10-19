@@ -1,6 +1,6 @@
 %YAML 1.2
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,42 +65,36 @@ components:
   parameters:
     backend_type: "VPI"
     engine_type: "GPU"
+- name: encoder_context
+  type: nvidia::gxf::VideoEncoderContext
+  parameters:
+    scheduling_term: encoder_response/async_st
 ---
 name: encoder
 components:
 - name: data_receiver
   type: nvidia::gxf::DoubleBufferReceiver
   parameters:
-    capacity: 2
+    capacity: 1
     policy: 0
 - type: nvidia::gxf::MessageAvailableSchedulingTerm
   parameters:
     receiver: data_receiver
     min_size: 1
-- name: pool
-  type: nvidia::gxf::BlockMemoryPool
-  parameters:
-    storage_type: 0
-    block_size: 6912000
-    num_blocks: 40
 - name: encoder_request
-  type: nvidia::isaac::EncoderRequest
+  type: nvidia::gxf::VideoEncoderRequest
   parameters:
-    image_receiver: data_receiver
-    pool: pool
+    input_frame: data_receiver
+    inbuf_storage_type: 1
     profile: 0
     qp: 20
     hw_preset_type: 0
     input_width: 1920
     input_height: 1080
     input_format: nv12
-    config: pframe
+    config: pframe_cqp
     iframe_interval: 5
-    async_scheduling_term: encoder_response/async_st
-- name: encoder_request_receptive_scheduling_term
-  type: nvidia::isaac::EncoderRequestReceptiveSchedulingTerm
-  parameters:
-    encoder_impl: encoder/encoder_request
+    videoencoder_context: global/encoder_context
 ---
 name: encoder_response
 components:
@@ -113,10 +107,18 @@ components:
   parameters:
     transmitter: output
     min_size: 1
-- type: nvidia::isaac::EncoderResponse
+- name: pool
+  type: nvidia::gxf::BlockMemoryPool
   parameters:
-    encoder_impl: encoder/encoder_request
-    tx: output
+    storage_type: 0
+    block_size: 6912000
+    num_blocks: 40
+- type: nvidia::gxf::VideoEncoderResponse
+  parameters:
+    videoencoder_context: global/encoder_context
+    output_transmitter: output
+    outbuf_storage_type: 0
+    pool: pool
 - name: async_st
   type: nvidia::gxf::AsynchronousSchedulingTerm
 ---
@@ -135,6 +137,8 @@ components:
   type: nvidia::isaac_ros::MessageRelay
   parameters:
     source: signal
+    max_waiting_count: 1
+    drop_waiting: false
 ---
 name: connections
 components:

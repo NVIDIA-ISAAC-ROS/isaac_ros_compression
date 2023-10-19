@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,29 +27,15 @@ def generate_launch_description():
     launch_args = [
         DeclareLaunchArgument(
             'rosbag_path',
-            description='Path of the rosbag'),
-        DeclareLaunchArgument(
-            'input_width',
-            default_value='1920',
-            description='Width of the original image'),
-        DeclareLaunchArgument(
-            'input_height',
-            default_value='1200',
-            description='Height of the original image'),
+            description='Path of the rosbag')
     ]
 
     rosbag_path = LaunchConfiguration('rosbag_path')
-    input_width = LaunchConfiguration('input_width')
-    input_height = LaunchConfiguration('input_height')
 
     left_decoder_node = ComposableNode(
         name='left_decoder_node',
         package='isaac_ros_h264_decoder',
         plugin='nvidia::isaac_ros::h264_decoder::DecoderNode',
-        parameters=[{
-            'input_width': input_width,
-            'input_height': input_height,
-        }],
         remappings=[
             ('image_compressed', 'left/image_compressed'),
             ('image_uncompressed', 'left/image_uncompressed')
@@ -60,10 +46,6 @@ def generate_launch_description():
         name='right_decoder_node',
         package='isaac_ros_h264_decoder',
         plugin='nvidia::isaac_ros::h264_decoder::DecoderNode',
-        parameters=[{
-            'input_width': input_width,
-            'input_height': input_height,
-        }],
         remappings=[
             ('image_compressed', 'right/image_compressed'),
             ('image_uncompressed', 'right/image_uncompressed')

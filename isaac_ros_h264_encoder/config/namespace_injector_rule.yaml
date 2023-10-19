@@ -1,6 +1,6 @@
 %YAML 1.2
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,9 +22,11 @@ body:
   components:
     - type: nvidia::isaac::tensor_ops::StreamConvertColorFormat
       path_parameter_keys: [input_adapter, output_adapter, stream]
-    - type: nvidia::isaac::EncoderRequest
-      path_parameter_keys: [async_scheduling_term]
-    - type: nvidia::isaac::EncoderResponse
-      path_parameter_keys: [encoder_impl]
     - type: nvidia::isaac::EncoderRequestReceptiveSchedulingTerm
       path_parameter_keys: [encoder_impl]
+    - type: nvidia::gxf::VideoEncoderContext
+      path_parameter_keys: [scheduling_term]
+    - type: nvidia::gxf::VideoEncoderRequest
+      path_parameter_keys: [videoencoder_context]
+    - type: nvidia::gxf::VideoEncoderResponse
+      path_parameter_keys: [videoencoder_context]
