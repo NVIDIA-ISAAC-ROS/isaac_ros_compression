@@ -20,90 +20,99 @@ project(gxf_codec_extension LANGUAGES C CXX)
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-fPIC -w)
 endif()
+find_package(yaml-cpp)
 
-# Dependencies
-find_package(CUDAToolkit)
 find_package(GXF ${ISAAC_ROS_GXF_VERSION} MODULE REQUIRED
     COMPONENTS
-    core
-    cuda
     multimedia
-    serialization
     std
 )
-include(YamlCpp)
+
+add_library(gxf_video_encoder_extension SHARED
+  video_encoder/videoencoder_ext.cpp
+  video_encoder/videoencoder_request.cpp
+  video_encoder/videoencoder_request.hpp
+  video_encoder/videoencoder_response.cpp
+  video_encoder/videoencoder_response.hpp
+  video_encoder/videoencoder_context.cpp
+  video_encoder/videoencoder_context.hpp
+  video_encoder/videoencoder_utils.cpp
+  video_encoder/videoencoder_utils.hpp
+)
+
+add_library(gxf_video_decoder_extension SHARED
+  video_decoder/videodecoder_ext.cpp
+  video_decoder/videodecoder_request.cpp
+  video_decoder/videodecoder_request.hpp
+  video_decoder/videodecoder_response.cpp
+  video_decoder/videodecoder_response.hpp
+  video_decoder/videodecoder_context.cpp
+  video_decoder/videodecoder_context.hpp
+  video_decoder/videodecoder_utils.cpp
+  video_decoder/videodecoder_utils.hpp
+)
+
+find_package(CUDAToolkit)
+
+# https://developer.nvidia.com/video_codec_sdk/downloads/v11-1-5
+# https://git-master.nvidia.com/r/plugins/gitiles/tegra/multimedia/libv4l2/+/refs/heads/rel-35
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+
+target_include_directories(gxf_video_encoder_extension PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/nvbuf_utils
+  ${CMAKE_CURRENT_SOURCE_DIR}/libv4l2/include
+)
+
+target_include_directories(gxf_video_decoder_extension PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/nvbuf_utils
+  ${CMAKE_CURRENT_SOURCE_DIR}/libv4l2/include
+)
+
+add_library(nvbuf_fdmap SHARED IMPORTED)
+add_library(nvbufsurface SHARED IMPORTED)
+add_library(nvbufsurftransform SHARED IMPORTED)
+add_library(nvv4l2 SHARED IMPORTED)
+add_library(cuvidv4l2 SHARED IMPORTED)
 
 execute_process(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE)
 message( STATUS "Architecture: ${ARCHITECTURE}" )
 
 if( ${ARCHITECTURE} STREQUAL "x86_64" )
-# x86_64
-add_library(gxf_codec_extension SHARED
-  decoder_extension.cpp
-  components/decoder.cpp
-  extensions/codec/components/decoder.hpp
-)
+  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbuf_fdmap.so)
+  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurface.so)
+  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvv4l2.so)
+  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libcuvidv4l2.so)
 elseif( ${ARCHITECTURE} STREQUAL "aarch64" )
-# aarch64
-add_library(gxf_codec_extension SHARED
-  codec_extension.cpp
-  components/decoder_request.cpp
-  extensions/codec/components/decoder_request.hpp
-  components/decoder_response.cpp
-  extensions/codec/components/decoder_response.hpp
-  components/decoder_scheduling_term.cpp
-  extensions/codec/components/decoder_scheduling_term.hpp
-  components/encoder_request.cpp
-  extensions/codec/components/encoder_request.hpp
-  components/encoder_response.cpp
-  extensions/codec/components/encoder_response.hpp
-  components/encoder_scheduling_term.cpp
-  extensions/codec/components/encoder_scheduling_term.hpp
-)
-
-add_library(jetson_multimedia STATIC
-  /usr/src/jetson_multimedia_api/samples/common/classes/NvVideoEncoder.cpp
-  /usr/src/jetson_multimedia_api/samples/common/classes/NvVideoDecoder.cpp
-  /usr/src/jetson_multimedia_api/samples/common/classes/NvV4l2Element.cpp
-  /usr/src/jetson_multimedia_api/samples/common/classes/NvV4l2ElementPlane.cpp
-  /usr/src/jetson_multimedia_api/samples/common/classes/NvElement.cpp
-  /usr/src/jetson_multimedia_api/samples/common/classes/NvElementProfiler.cpp
-  /usr/src/jetson_multimedia_api/samples/common/classes/NvBuffer.cpp
-  /usr/src/jetson_multimedia_api/samples/common/classes/NvLogging.cpp
-)
-
-target_include_directories(
-  jetson_multimedia
-    PUBLIC /usr/lib/aarch64-linux-gnu/tegra
-           /usr/src/jetson_multimedia_api/argus/samples/utils
-           /usr/src/jetson_multimedia_api/include)
-
-target_link_libraries(
-  jetson_multimedia PUBLIC
-  /usr/lib/aarch64-linux-gnu/tegra/libnvbuf_utils.so
-  /usr/lib/aarch64-linux-gnu/tegra/libnvv4l2.so
-)
-
-target_link_libraries(gxf_codec_extension PRIVATE jetson_multimedia)
+  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvbuf_fdmap.so.1.0.0)
+  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvbufsurface.so)
+  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvv4l2.so)
+  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvcuvidv4l2.so)
 endif()
 
-set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
-# https://developer.nvidia.com/video_codec_sdk/downloads/v11-1-5
-target_include_directories(gxf_codec_extension PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/nvcuvid/Interface
-)
-
-# nvcuvid
-add_library(nvcuvid SHARED IMPORTED)
-set_property(TARGET nvcuvid PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/nvcuvid/linux/stubs/${ARCHITECTURE}/libnvcuvid.so)
-
-target_link_libraries(gxf_codec_extension
+target_link_libraries(gxf_video_encoder_extension
   PUBLIC
     CUDA::cuda_driver
     GXF::multimedia
-    GXF::cuda
-    GXF::serialization
     GXF::std
-    nvcuvid
     yaml-cpp
+    cuvidv4l2
+    nvv4l2
+    nvbufsurface
+    nvbuf_fdmap
+    nvbufsurftransform
+)
+
+target_link_libraries(gxf_video_decoder_extension
+  PUBLIC
+    CUDA::cuda_driver
+    GXF::multimedia
+    GXF::std
+    yaml-cpp
+    cuvidv4l2
+    nvv4l2
+    nvbufsurface
+    nvbuf_fdmap
+    nvbufsurftransform
 )

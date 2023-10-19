@@ -1,6 +1,5 @@
-
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,7 +39,7 @@ def generate_launch_description():
         parameters=[{
             'input_width': 1920,
             'input_height': 1200,
-            'config': 'iframe',
+            'config': 'iframe_cqp',
         }],
         remappings=[
             ('image_raw', 'hawk_0_left_rgb_image'),

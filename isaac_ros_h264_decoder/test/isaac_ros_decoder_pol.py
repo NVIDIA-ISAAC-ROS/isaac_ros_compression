@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,8 +31,6 @@ import rclpy
 
 from sensor_msgs.msg import CompressedImage, Image
 
-HEIGHT = 460
-WIDTH = 460
 VISUALIZE = False
 
 
@@ -42,11 +40,7 @@ def generate_test_description():
         name='decoder',
         package='isaac_ros_h264_decoder',
         plugin='nvidia::isaac_ros::h264_decoder::DecoderNode',
-        namespace=IsaacROSDecoderTest.generate_namespace(),
-        parameters=[{
-                'input_height': HEIGHT,
-                'input_width': WIDTH,
-        }])
+        namespace=IsaacROSDecoderTest.generate_namespace())
 
     container = ComposableNodeContainer(
         name='decoder_container',

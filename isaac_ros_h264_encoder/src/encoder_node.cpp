@@ -5,7 +5,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -54,10 +54,10 @@ const std::vector<std::pair<std::string, std::string>> EXTENSIONS = {
   {"isaac_ros_gxf", "gxf/lib/cuda/libgxf_cuda.so"},
   {"isaac_ros_gxf", "gxf/lib/serialization/libgxf_serialization.so"},
   {"isaac_ros_image_proc", "gxf/lib/image_proc/libgxf_tensorops.so"},
-  {"isaac_ros_h264_encoder", "gxf/lib/codec/libgxf_codec_extension.so"},
+  {"isaac_ros_h264_encoder", "gxf/lib/codec/libgxf_video_encoder_extension.so"},
 };
 const std::vector<std::string> PRESET_EXTENSION_SPEC_NAMES = {
-  "isaac_ros_h264_encoder"
+  "isaac_ros_h264_encoder",
 };
 const std::vector<std::string> EXTENSION_SPEC_FILENAMES = {};
 const std::vector<std::string> GENERATOR_RULE_FILENAMES = {
@@ -101,7 +101,7 @@ EncoderNode::EncoderNode(const rclcpp::NodeOptions & options)
   hw_preset_type_(declare_parameter<int32_t>("hw_preset_type", 0)),
   profile_(declare_parameter<int32_t>("profile", 0)),
   iframe_interval_(declare_parameter<int32_t>("iframe_interval", 5)),
-  config_(declare_parameter<std::string>("config", "pframe"))
+  config_(declare_parameter<std::string>("config", "pframe_cqp"))
 {
   RCLCPP_DEBUG(get_logger(), "[EncoderNode] Constructor");
 
@@ -113,11 +113,11 @@ EncoderNode::EncoderNode(const rclcpp::NodeOptions & options)
 
 void EncoderNode::preLoadGraphCallback()
 {
-  RCLCPP_INFO(get_logger(), "[EncoderNode] preLoadGraphCallback().");
-
   NitrosNode::preLoadGraphSetParameter(
-    "encoder", "nvidia::isaac::EncoderRequest", "config",
+    "encoder", "nvidia::gxf::VideoEncoderRequest", "config",
     config_);
+
+  RCLCPP_INFO(get_logger(), "[EncoderNode] preLoadGraphCallback().");
 }
 
 void EncoderNode::postLoadGraphCallback()
@@ -126,27 +126,27 @@ void EncoderNode::postLoadGraphCallback()
 
   // Update encoder parameters
   getNitrosContext().setParameterUInt32(
-    "encoder", "nvidia::isaac::EncoderRequest", "input_width",
+    "encoder", "nvidia::gxf::VideoEncoderRequest", "input_width",
     (uint32_t)input_width_);
 
   getNitrosContext().setParameterUInt32(
-    "encoder", "nvidia::isaac::EncoderRequest", "input_height",
+    "encoder", "nvidia::gxf::VideoEncoderRequest", "input_height",
     (uint32_t)input_height_);
 
   getNitrosContext().setParameterUInt32(
-    "encoder", "nvidia::isaac::EncoderRequest", "qp",
+    "encoder", "nvidia::gxf::VideoEncoderRequest", "qp",
     (uint32_t)qp_);
 
-  getNitrosContext().setParameterUInt32(
-    "encoder", "nvidia::isaac::EncoderRequest", "hw_preset_type",
+  getNitrosContext().setParameterInt32(
+    "encoder", "nvidia::gxf::VideoEncoderRequest", "hw_preset_type",
     (uint32_t)hw_preset_type_);
 
-  getNitrosContext().setParameterUInt32(
-    "encoder", "nvidia::isaac::EncoderRequest", "profile",
+  getNitrosContext().setParameterInt32(
+    "encoder", "nvidia::gxf::VideoEncoderRequest", "profile",
     (uint32_t)profile_);
 
   getNitrosContext().setParameterInt32(
-    "encoder", "nvidia::isaac::EncoderRequest", "iframe_interval",
+    "encoder", "nvidia::gxf::VideoEncoderRequest", "iframe_interval",
     iframe_interval_);
 }
 

@@ -1,6 +1,6 @@
 %YAML 1.2
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,16 @@ components:
   parameters:
     receiver: input_image
     min_size: 1
+- name: decoder_request
+  type: nvidia::gxf::VideoDecoderRequest
+  parameters:
+    input_frame: input_image
+    videodecoder_context: global/decoder_context
+    async_scheduling_term: decoder_response/async_st
+    inbuf_storage_type: 0
+---
+name: decoder_response
+components:
 - name: data_transmitter
   type: nvidia::gxf::DoubleBufferTransmitter
   parameters:
@@ -42,14 +52,14 @@ components:
     storage_type: 1
     block_size: 6912000
     num_blocks: 40
-- type: nvidia::isaac::Decoder
+- type: nvidia::gxf::VideoDecoderResponse
   parameters:
-    image_receiver: input_image
+    videodecoder_context: global/decoder_context
     output_transmitter: data_transmitter
     pool: pool
-    input_width: 1920
-    input_height: 1080
-    log_level: 2
+    outbuf_storage_type: 1
+- name: async_st
+  type: nvidia::gxf::AsynchronousSchedulingTerm
 ---
 name: color_converter
 components:
@@ -100,6 +110,10 @@ components:
   parameters:
     backend_type: "VPI"
     engine_type: "GPU"
+- name: decoder_context
+  type: nvidia::gxf::VideoDecoderContext
+  parameters:
+    async_scheduling_term: decoder_response/async_st
 ---
 name: sink
 components:
@@ -121,7 +135,7 @@ name: connections
 components:
 - type: nvidia::gxf::Connection
   parameters:
-    source: decoder/data_transmitter
+    source: decoder_response/data_transmitter
     target: color_converter/data_receiver
 - type: nvidia::gxf::Connection
   parameters:
