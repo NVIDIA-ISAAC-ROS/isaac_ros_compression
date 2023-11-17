@@ -53,6 +53,10 @@ components:
     output_adapter: global/adapter
     output_name: "image"
     stream: global/stream
+- type: nvidia::gxf::MemoryAvailableSchedulingTerm
+  parameters:
+    allocator: pool
+    min_blocks: 1
 ---
 name: global
 components:
@@ -121,6 +125,10 @@ components:
     pool: pool
 - name: async_st
   type: nvidia::gxf::AsynchronousSchedulingTerm
+- type: nvidia::gxf::MemoryAvailableSchedulingTerm
+  parameters:
+    allocator: pool
+    min_blocks: 1
 ---
 name: sink
 components:

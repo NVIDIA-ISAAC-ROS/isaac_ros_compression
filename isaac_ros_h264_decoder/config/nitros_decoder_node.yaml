@@ -60,6 +60,10 @@ components:
     outbuf_storage_type: 1
 - name: async_st
   type: nvidia::gxf::AsynchronousSchedulingTerm
+- type: nvidia::gxf::MemoryAvailableSchedulingTerm
+  parameters:
+    allocator: pool
+    min_blocks: 1
 ---
 name: color_converter
 components:
@@ -98,6 +102,10 @@ components:
     output_adapter: global/adapter
     output_name: "image"
     stream: global/stream
+- type: nvidia::gxf::MemoryAvailableSchedulingTerm
+  parameters:
+    allocator: pool
+    min_blocks: 1
 ---
 name: global
 components:
