@@ -6,14 +6,13 @@ Hardware-accelerated data compression.
 
 ## Overview
 
-[Isaac ROS Compression](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_compression) provides an H.264 image encoder and decoder that
-leverages the specialized hardware in NVIDIA GPUs and the
+[Isaac ROS Compression](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_compression) provides H.264 image encoder
+and decoder that leverages the specialized hardware in NVIDIA GPUs and the
 [Jetson](https://developer.nvidia.com/embedded-computing) platform.
 The `isaac_ros_h264_encoder` package can compress an image into H.264
-data using the NVENC on the Jetson platform. The
+data using the NVENC. The
 `isaac_ros_h264_decoder` package can decode the H.264 data into
-original images using the NVDEC on the Jetson and x86 platform with
-NVIDIA GPUs.
+original images using the NVDEC.
 
 Image compression reduces the data footprint of images when written to
 storage or transmitted between computers. A 1080p camera at 30fps
@@ -42,8 +41,8 @@ debugging of the event or to improve perception and robot functions.
 
 [H.264](https://en.wikipedia.org/wiki/Advanced_Video_Coding) is an
 efficient and popular compression algorithm with broad support across
-many platforms. The output of the `isaac_ros_h264_encoder` package on
-Jetson can then be decoded with hardware acceleration using the
+many platforms. The output of the `isaac_ros_h264_encoder` package can then
+be decoded with hardware acceleration using the
 `isaac_ros_h264_decoder` on Jetson and x86_64 systems, or by
 third-party H.264 decoder packages on non-NVIDIA platforms.
 
@@ -88,4 +87,4 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
 
 ## Latest
 
-Update 2023-10-18: Added support on `x86_64` for `isaac_ros_h264_encoder` and `aarch64` for `isaac_ros_h264_decoder`.
+Update 2023-10-18: Added support on `x86_64` for `isaac_ros_h264_encoder`.
