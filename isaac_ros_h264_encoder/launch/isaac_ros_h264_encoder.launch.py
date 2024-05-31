@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,11 +33,16 @@ def generate_launch_description():
             'input_width',
             default_value='1920',
             description='Width of the original image'),
+        DeclareLaunchArgument(
+            'config',
+            default_value='pframe_cqp',
+            description='Config of encoder'),
     ]
 
     # Encoder parameters
     input_height = LaunchConfiguration('input_height')
     input_width = LaunchConfiguration('input_width')
+    config = LaunchConfiguration('config')
 
     encoder_node = ComposableNode(
         name='encoder',
@@ -46,6 +51,7 @@ def generate_launch_description():
         parameters=[{
                 'input_height': input_height,
                 'input_width': input_width,
+                'config': config,
         }])
 
     container = ComposableNodeContainer(

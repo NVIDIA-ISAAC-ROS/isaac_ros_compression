@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,12 +67,12 @@ class IsaacROSEncoderTest(IsaacROSBaseTest):
     @IsaacROSBaseTest.for_each_test_case()
     def test_image_encoder(self, test_folder):
         # Check if nvenc is available for x86 platform
-        nvenc_available = False
+        nvenc_available = True
         if (platform.machine()) == 'x86_64':
             nvidia_smi_cmd = 'nvidia-smi --query-gpu=compute_cap --format=csv'
             compute_caps = os.popen(nvidia_smi_cmd).read().strip().split('\n')
             for cap in compute_caps[1:]:
-                if (cap not in UNSUPPORTED_COMPUTE_CAPS):
+                if (cap in UNSUPPORTED_COMPUTE_CAPS):
                     nvenc_available = True
                     break
         if (not nvenc_available):

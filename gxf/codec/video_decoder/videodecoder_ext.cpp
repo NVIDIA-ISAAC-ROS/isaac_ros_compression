@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ GXF_EXT_FACTORY_BEGIN()
 GXF_EXT_FACTORY_SET_INFO(0xedc9900173bd435c, 0xaf0ce013dcda3439,
                          "VideoDecoderExtension",
                          "Extension for video decode/decompression", "NVIDIA",
-                         "1.0.0", "LICENSE");
+                         "1.2.0", "LICENSE");
 
 GXF_EXT_FACTORY_ADD(0xc69e604d9f1d425e, 0xad5f121a7e9d3456,
                     nvidia::gxf::VideoDecoderContext, nvidia::gxf::Component,

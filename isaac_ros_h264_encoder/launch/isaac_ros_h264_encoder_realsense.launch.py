@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,8 +38,8 @@ def generate_launch_description():
         remappings=[
             ('infra1/image_rect_raw', 'left/image_rect_raw_mono'),
             ('infra2/image_rect_raw', 'right/image_rect_raw_mono'),
-            ('infra1/camera_info', 'left/camerainfo'),
-            ('infra2/camera_info', 'right/camerainfo')
+            ('infra1/camera_info', 'left/camera_info'),
+            ('infra2/camera_info', 'right/camera_info')
         ]
     )
 
@@ -61,6 +61,8 @@ def generate_launch_description():
         name='image_format_node_right',
         parameters=[{
                 'encoding_desired': 'rgb8',
+                'image_width': 640,
+                'image_height': 480,
         }],
         remappings=[
             ('image_raw', 'right/image_rect_raw_mono'),
@@ -105,7 +107,7 @@ def generate_launch_description():
     )
 
     rosbag_record = ExecuteProcess(
-        cmd=['ros2', 'bag', 'record', '/left/camerainfo', '/right/camerainfo',
+        cmd=['ros2', 'bag', 'record', '/left/camera_info', '/right/camera_info',
              '/left/image_compressed', '/right/image_compressed'],
         output='screen')
 

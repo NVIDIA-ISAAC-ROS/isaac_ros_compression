@@ -21,10 +21,10 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_h264_encoder</name>
-  <version>2.1.0</version>
+  <version>3.0.0</version>
   <description>H.264 Encoder</description>
 
-  <maintainer email="yuankunz@nvidia.com">Yuankun Zhu</maintainer>
+  <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>
   <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
   <author>Yuankun Zhu</author>
@@ -41,11 +41,12 @@
   <depend>sensor_msgs_py</depend>
   <depend>isaac_ros_common</depend>
   <depend>isaac_ros_image_proc</depend>
+  <depend>isaac_ros_gxf</depend>
   <depend>isaac_ros_nitros</depend>
   <depend>isaac_ros_nitros_image_type</depend>
   <depend>isaac_ros_nitros_compressed_image_type</depend>
 
-  <build_depend>isaac_ros_gxf</build_depend>
+  <exec_depend>gxf_isaac_tensorops</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

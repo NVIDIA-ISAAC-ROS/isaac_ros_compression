@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
+
 #include "videoencoder_context.hpp"
 #include "videoencoder_utils.hpp"
 namespace nvidia {
@@ -117,7 +118,7 @@ gxf_result_t VideoEncoderContext::initalizeContext() {
   /* This call creates a new V4L2 Video Encoder object
    on the device node.
    device_ = "/dev/nvidia0" for cuvid (for system with single GPU).
-   device_ = "/dev/nvhost-msenc" for tegra
+   device_ = "/dev/v4l2-nvenc" for tegra
   */
   if (ctx_->is_cuvid) {
     /* For multi GPU systems, device = "/dev/nvidiaX",
@@ -140,8 +141,8 @@ gxf_result_t VideoEncoderContext::initalizeContext() {
     GXF_LOG_INFO("Using GPU Device, device name:%s", gpu_device);
     ctx_->dev_fd = v4l2_open(gpu_device, 0);
   } else {
-    GXF_LOG_INFO("Using Tegra Device, device name:%s", "/dev/nvhost-msenc");
-    ctx_->dev_fd = v4l2_open("/dev/nvhost-msenc", 0);
+    GXF_LOG_INFO("Using Tegra Device, device name:%s", "/dev/nvl2-nvenc");
+    ctx_->dev_fd = v4l2_open("/dev/v4l2-nvenc", 0);
   }
   if (ctx_->dev_fd < 0) {
     GXF_LOG_ERROR("Failed to open device:v4l2_open() failed");

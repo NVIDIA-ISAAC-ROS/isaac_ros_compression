@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ def generate_launch_description():
     )
 
     rosbag_record = ExecuteProcess(
-        cmd=['ros2', 'bag', 'record', '/left/camerainfo', '/right/camerainfo',
+        cmd=['ros2', 'bag', 'record', '/left/camera_info', '/right/camera_info',
              '/left/image_compressed', '/right/image_compressed'],
         output='screen')
 

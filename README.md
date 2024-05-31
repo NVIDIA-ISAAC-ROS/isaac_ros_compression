@@ -1,6 +1,6 @@
 # Isaac ROS Compression
 
-Hardware-accelerated data compression.
+NVIDIA-accelerated data compression.
 
 <div align="center"><a class="reference internal image-reference" href="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/main/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_compression/isaac_ros_compression_nodegraph.png/"><img alt="image" src="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/main/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_compression/isaac_ros_compression_nodegraph.png/" width="800px"/></a></div>
 
@@ -20,7 +20,7 @@ produces 177MB/s of data; image compression reduces this by
 approximately 10 times to 17MB/s of data, reducing the throughput needed
 to send this to another computer or write out to storage; a one minute
 1080p camera recording is reduced from ~10GB to ~1GB. This compression
-is provided by dedicated hardware acceleration (NvEnc) separate from
+is provided by dedicated NVIDIA acceleration (NvEnc) separate from
 other hardware engines such as the GPU.
 
 A common use case for image compression during the development of robots
@@ -42,7 +42,7 @@ debugging of the event or to improve perception and robot functions.
 [H.264](https://en.wikipedia.org/wiki/Advanced_Video_Coding) is an
 efficient and popular compression algorithm with broad support across
 many platforms. The output of the `isaac_ros_h264_encoder` package can then
-be decoded with hardware acceleration using the
+be decoded with NVIDIA acceleration using the
 `isaac_ros_h264_decoder` on Jetson and x86_64 systems, or by
 third-party H.264 decoder packages on non-NVIDIA platforms.
 
@@ -59,11 +59,11 @@ formats and dramatically accelerate communication between participating nodes.
 
 ## Performance
 
-| Sample Graph<br/><br/>                                                                                                                                                        | Input Size<br/><br/>      | AGX Orin<br/><br/>                                                                                                                                                  | x86_64 w/ RTX 4060 Ti<br/><br/>                                                                                                                                        |
-|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [H.264 Decoder Node](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/scripts/isaac_ros_h264_decoder_node.py)<br/><br/><br/><br/>                            | 1080p<br/><br/><br/><br/> | [179 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_decoder_node-agx_orin.json)<br/><br/><br/>9.5 ms<br/><br/>       | [596 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_decoder_node-nuc_4060ti.json)<br/><br/><br/>3.1 ms<br/><br/>        |
-| [H.264 Encoder Node](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/scripts/isaac_ros_h264_encoder_iframe_node.py)<br/><br/><br/>I-frame Support<br/><br/> | 1080p<br/><br/><br/><br/> | [402 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_iframe_node-agx_orin.json)<br/><br/><br/>12 ms<br/><br/> | [596 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_iframe_node-nuc_4060ti.json)<br/><br/><br/>4.8 ms<br/><br/> |
-| [H.264 Encoder Node](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/scripts/isaac_ros_h264_encoder_pframe_node.py)<br/><br/><br/>P-frame Support<br/><br/> | 1080p<br/><br/><br/><br/> | [464 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_pframe_node-agx_orin.json)<br/><br/><br/>11 ms<br/><br/> | [596 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_pframe_node-nuc_4060ti.json)<br/><br/><br/>4.1 ms<br/><br/> |
+| Sample Graph<br/><br/>                                                                                                                                                                                                    | Input Size<br/><br/>      | AGX Orin<br/><br/>                                                                                                                                                          | x86_64 w/ RTX 4060 Ti<br/><br/>                                                                                                                                               |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [H.264 Decoder Node](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/benchmarks/isaac_ros_h264_decoder_benchmark/scripts/isaac_ros_h264_decoder_node.py)<br/><br/><br/><br/>                            | 1080p<br/><br/><br/><br/> | [198 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_decoder_node-agx_orin.json)<br/><br/><br/>8.1 ms @ 30Hz<br/><br/>        | [596 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_decoder_node-nuc_4060ti.json)<br/><br/><br/>3.8 ms @ 30Hz<br/><br/>        |
+| [H.264 Encoder Node](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/benchmarks/isaac_ros_h264_encoder_benchmark/scripts/isaac_ros_h264_encoder_iframe_node.py)<br/><br/><br/>I-frame Support<br/><br/> | 1080p<br/><br/><br/><br/> | [406 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_iframe_node-agx_orin.json)<br/><br/><br/>12 ms @ 30Hz<br/><br/>  | [425 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_iframe_node-nuc_4060ti.json)<br/><br/><br/>3.3 ms @ 30Hz<br/><br/> |
+| [H.264 Encoder Node](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/benchmarks/isaac_ros_h264_encoder_benchmark/scripts/isaac_ros_h264_encoder_pframe_node.py)<br/><br/><br/>P-frame Support<br/><br/> | 1080p<br/><br/><br/><br/> | [473 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_pframe_node-agx_orin.json)<br/><br/><br/>9.1 ms @ 30Hz<br/><br/> | [596 fps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_benchmark/blob/main/results/isaac_ros_h264_encoder_pframe_node-nuc_4060ti.json)<br/><br/><br/>2.3 ms @ 30Hz<br/><br/> |
 
 ---
 
@@ -82,9 +82,8 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
   * [API](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_decoder/index.html#api)
 * [`isaac_ros_h264_encoder`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_encoder/index.html)
   * [Quickstart](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_encoder/index.html#quickstart)
-  * [Try More Examples](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_encoder/index.html#try-more-examples)
   * [API](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_encoder/index.html#api)
 
 ## Latest
 
-Update 2023-10-18: Added support on `x86_64` for `isaac_ros_h264_encoder`.
+Update 2024-05-30: Update to be compatible with JetPack 6.0
