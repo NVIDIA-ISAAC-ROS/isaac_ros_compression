@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
+
 #include <string>
 
 #include "gxf/core/gxf.h"
@@ -28,7 +29,7 @@ GXF_EXT_FACTORY_BEGIN()
 GXF_EXT_FACTORY_SET_INFO(0xea5c44e415db4448, 0xa3a6f32004303338,
                          "VideoEncoderExtension",
                          "Extension for video encode/compression", "NVIDIA",
-                         "1.0.0", "LICENSE");
+                         "1.2.0", "LICENSE");
 GXF_EXT_FACTORY_ADD(0xc5bdaa9f4b1543c7, 0x806620195122a5b5,
                     nvidia::gxf::VideoEncoderContext, nvidia::gxf::Component,
                     "Creates Video Encoder Context");

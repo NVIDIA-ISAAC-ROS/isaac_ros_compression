@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,10 @@ ament_auto_find_build_dependencies()
 ament_auto_add_library(decoder_node SHARED src/decoder_node.cpp)
 rclcpp_components_register_nodes(decoder_node "nvidia::isaac_ros::h264_decoder::DecoderNode")
 set(node_plugins "${node_plugins}nvidia::isaac_ros::h264_decoder::DecoderNode;$<TARGET_FILE:decoder_node>\n")
+set_target_properties(decoder_node PROPERTIES
+  BUILD_WITH_INSTALL_RPATH TRUE
+  BUILD_RPATH_USE_ORIGIN TRUE
+  INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 ### Install extensions built from source
 

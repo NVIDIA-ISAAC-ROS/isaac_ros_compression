@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
+
 #ifndef NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEOENCODER_UTILS_HPP_
 #define NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEOENCODER_UTILS_HPP_
 
@@ -34,8 +35,8 @@
 
 #include "gxf/core/gxf.h"
 #include "gxf/core/handle.hpp"
+#include "gxf/core/parameter_parser_std.hpp"
 #include "gxf/std/codelet.hpp"
-#include "gxf/std/parameter_parser_std.hpp"
 #include "gxf/std/receiver.hpp"
 #include "gxf/std/scheduling_terms.hpp"
 #include "gxf/std/tensor.hpp"

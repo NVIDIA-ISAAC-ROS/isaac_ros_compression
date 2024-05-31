@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,13 +22,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 find_package(yaml-cpp)
 
-find_package(GXF ${ISAAC_ROS_GXF_VERSION} MODULE REQUIRED
-    COMPONENTS
-    multimedia
-    std
-)
-
-add_library(gxf_video_encoder_extension SHARED
+ament_auto_add_library(gxf_video_encoder_extension SHARED
   video_encoder/videoencoder_ext.cpp
   video_encoder/videoencoder_request.cpp
   video_encoder/videoencoder_request.hpp
@@ -40,7 +34,7 @@ add_library(gxf_video_encoder_extension SHARED
   video_encoder/videoencoder_utils.hpp
 )
 
-add_library(gxf_video_decoder_extension SHARED
+ament_auto_add_library(gxf_video_decoder_extension SHARED
   video_decoder/videodecoder_ext.cpp
   video_decoder/videodecoder_request.cpp
   video_decoder/videodecoder_request.hpp
@@ -84,35 +78,37 @@ if( ${ARCHITECTURE} STREQUAL "x86_64" )
   set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvv4l2.so)
   set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libcuvidv4l2.so)
 elseif( ${ARCHITECTURE} STREQUAL "aarch64" )
-  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvbuf_fdmap.so.1.0.0)
-  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvbufsurface.so)
-  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvbufsurftransform.so)
-  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvv4l2.so)
-  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/tegra/libnvcuvidv4l2.so)
+  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbuf_fdmap.so.1.0.0)
+  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurface.so)
+  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvv4l2.so)
+  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvcuvidv4l2.so)
 endif()
 
 target_link_libraries(gxf_video_encoder_extension
-  PUBLIC
-    CUDA::cuda_driver
-    GXF::multimedia
-    GXF::std
-    yaml-cpp
-    cuvidv4l2
-    nvv4l2
-    nvbufsurface
-    nvbuf_fdmap
-    nvbufsurftransform
+  CUDA::cuda_driver
+  CUDA::cudart
+  yaml-cpp
+  cuvidv4l2
+  nvv4l2
+  nvbufsurface
+  nvbuf_fdmap
+  nvbufsurftransform
+  isaac_ros_gxf::Core
+  isaac_ros_gxf::Std
+  isaac_ros_gxf::Multimedia
 )
 
 target_link_libraries(gxf_video_decoder_extension
-  PUBLIC
-    CUDA::cuda_driver
-    GXF::multimedia
-    GXF::std
-    yaml-cpp
-    cuvidv4l2
-    nvv4l2
-    nvbufsurface
-    nvbuf_fdmap
-    nvbufsurftransform
+  CUDA::cuda_driver
+  CUDA::cudart
+  yaml-cpp
+  cuvidv4l2
+  nvv4l2
+  nvbufsurface
+  nvbuf_fdmap
+  nvbufsurftransform
+  isaac_ros_gxf::Core
+  isaac_ros_gxf::Std
+  isaac_ros_gxf::Multimedia
 )
