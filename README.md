@@ -77,7 +77,6 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
 
 * [`isaac_ros_h264_decoder`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_decoder/index.html)
   * [Quickstart](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_decoder/index.html#quickstart)
-  * [Try More Examples](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_decoder/index.html#try-more-examples)
   * [Troubleshooting](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_decoder/index.html#troubleshooting)
   * [API](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_decoder/index.html#api)
 * [`isaac_ros_h264_encoder`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_compression/isaac_ros_h264_encoder/index.html)
@@ -86,4 +85,4 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
 
 ## Latest
 
-Update 2024-05-30: Update to be compatible with JetPack 6.0
+Update 2024-09-26: Update for ZED compatibility
