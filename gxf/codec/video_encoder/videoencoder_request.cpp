@@ -152,6 +152,13 @@ gxf_result_t VideoEncoderRequest::start() {
     return GXF_FAILURE;
   }
 
+  // Set cuda device id
+  retval = set_cuda_gpu_id(impl_->ctx);
+  if (retval < 0) {
+    GXF_LOG_ERROR("Error in set_cuda_gpu_id:%d", retval);
+    return GXF_FAILURE;
+  }
+
   // Set v4l2 parameters for output plane(input yuv buffer for encoder)
   // YUV 420 nv12 and planar formats  pitch linear supported now
   retval = set_output_plane_format(impl_->ctx);

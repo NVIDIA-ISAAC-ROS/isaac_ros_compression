@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
-
 #ifndef NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEOENCODER_REQUEST_HPP_
 #define NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEOENCODER_REQUEST_HPP_
 

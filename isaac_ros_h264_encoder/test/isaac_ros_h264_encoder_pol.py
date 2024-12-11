@@ -103,7 +103,7 @@ class IsaacROSEncoderTest(IsaacROSBaseTest):
                 if 'image_compressed' in received_messages:
                     done = True
                     break
-            if(SAVE_H264):
+            if SAVE_H264:
                 compressed_img_msg = received_messages['image_compressed']
                 compressed_img_file = open('compressed.h264', 'wb')
                 compressed_img_file.write(compressed_img_msg.data)

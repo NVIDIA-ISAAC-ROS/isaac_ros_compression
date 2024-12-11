@@ -117,6 +117,11 @@
  */
 #define V4L2_EVENT_RESOLUTION_CHANGE        5
 
+/**
+ * Define the V4L2 event type for decoder AV1 SVC data.
+ */
+#define V4L2_EVENT_SVC_DATA                 7
+
 /** @cond UNUSED */
 /* >> The declarations from here to the next endcond statement are not
  * >> currently implemented. DO NOT USE. */
@@ -139,20 +144,6 @@
  * A v4l2_mpeg_video_h265_profile must be passed.
  */
 #define V4L2_CID_MPEG_VIDEO_H265_PROFILE        (V4L2_CID_MPEG_BASE+513)
-
-/**
- * Defines the possible profiles for H.265 encoder.
- */
-enum v4l2_mpeg_video_h265_profile {
-    /** H.265 Main profile. */
-    V4L2_MPEG_VIDEO_H265_PROFILE_MAIN = 0,
-    /** H.265 Main10 profile. */
-    V4L2_MPEG_VIDEO_H265_PROFILE_MAIN10 = 1,
-    /** H.265 MainStillPicture profile. */
-    V4L2_MPEG_VIDEO_H265_PROFILE_MAINSTILLPICTURE = 2,
-    /** H.265 FREXT profile. */
-    V4L2_MPEG_VIDEO_H265_PROFILE_FREXT = 3,
-};
 
 /**
  * Defines the control ID to set the encoder IDR frame interval.
@@ -241,11 +232,6 @@ struct v4l2_ctrl_h264_slice_param {
 
     __u8 flags;
 };
-
-/** Defines whether the v4l2_h264_dpb_entry structure is used.
-If not set, this entry is unused for reference. */
-#define V4L2_H264_DPB_ENTRY_FLAG_ACTIVE     0x01
-#define V4L2_H264_DPB_ENTRY_FLAG_LONG_TERM  0x02
 
 struct v4l2_ctrl_h264_decode_param {
     __u32 num_slices;
@@ -401,6 +387,9 @@ struct v4l2_ctrl_vp8_frame_hdr {
  * - #V4L2_CID_MPEG_VIDEO_CUDA_MEM_TYPE
  * - #V4L2_CID_MPEG_VIDEO_CUDA_GPU_ID
  * - #V4L2_CID_MPEG_VIDEODEC_DROP_FRAME_INTERVAL
+ * - #V4L2_CID_MPEG_VIDEODEC_GDR_STREAM
+ * - #V4L2_CID_MPEG_VIDEODEC_OPERATING_POINT
+ * - #V4L2_CID_MPEG_VIDEODEC_ENABLE_MVC
  *
  * ### Supported Events
  * Event                         | Purpose
@@ -459,7 +448,7 @@ struct v4l2_ctrl_vp8_frame_hdr {
  *
  * @note This only works for streams having a single reference frame.
  *
- * A boolean value must be supplied with this control.
+ * No addtional parameter should be supplied with this control.
  *
  * @attention This control must be set after setting formats on both the planes
  * and before requesting buffers on either plane.
@@ -469,7 +458,7 @@ struct v4l2_ctrl_vp8_frame_hdr {
 /**
  * Defines the Control ID to enable decoder error and metadata reporting.
  *
- * A boolean value must be supplied with this control.
+ * No additional parameter should be supplied with this control.
  *
  * @attention This control must be set after setting formats on both the planes
  * and before requesting buffers on either plane.
@@ -543,7 +532,7 @@ struct v4l2_ctrl_vp8_frame_hdr {
  * @attention This control must be set after receiving V4L2_EVENT_RESOLUTION_CHANGE.
  *
  */
-#define V4L2_CID_MPEG_VIDEODEC_SAR_WIDTH (V4L2_CID_MPEG_BASE+569)
+#define V4L2_CID_MPEG_VIDEODEC_SAR_WIDTH (V4L2_CID_MPEG_BASE+580)
 
 /**
  * Defines the Control ID to get Sample Aspect Ratio height for decoding.
@@ -553,7 +542,7 @@ struct v4l2_ctrl_vp8_frame_hdr {
  * @attention This control must be set after receiving V4L2_EVENT_RESOLUTION_CHANGE.
  *
  */
-#define V4L2_CID_MPEG_VIDEODEC_SAR_HEIGHT (V4L2_CID_MPEG_BASE+570)
+#define V4L2_CID_MPEG_VIDEODEC_SAR_HEIGHT (V4L2_CID_MPEG_BASE+581)
 
  /**
  * Defines the Control ID to embed the SEI data coming from upstream plugins.
@@ -564,6 +553,56 @@ struct v4l2_ctrl_vp8_frame_hdr {
  *
  */
  #define V4L2_CID_MPEG_VIDEOENC_DS_SEI_DATA (V4L2_CID_MPEG_BASE+571)
+ 
+/**
+* Defines the Control ID to enable GDR stream playback.
+*
+* A boolean value must be supplied with this control.
+*
+* @attention This control must be set after setting formats on both the planes
+* and before requesting buffers on either plane.
+*/
+#define V4L2_CID_MPEG_VIDEODEC_GDR_STREAM (V4L2_CID_MPEG_BASE+591)
+
+/**
+* Defines the Control ID to set SEI UUID
+*
+* A string of size 16 bytes to be suppplied with this control
+*
+* @attention This control must be set after setting formats on both the planes
+* and before requesting buffers on either plane.
+*/
+#define V4L2_CID_MPEG_VIDEOENC_DS_SEI_UUID (V4L2_CID_MPEG_BASE+594)
+
+/**
+* Defines the Control ID to set the AV1 decoder operating point.
+*
+* A int value must be supplied with this control.
+*
+* @attention This control must be set after setting formats on both the planes
+* and before requesting buffers on either plane.
+*/
+#define V4L2_CID_MPEG_VIDEODEC_OPERATING_POINT (V4L2_CID_MPEG_BASE+595)
+
+/**
+* Defines the Control ID to enable the AV1 decoder MVC feature.
+*
+* This will enable the AV1 MVC feature
+*
+* @attention This control must be set after setting formats on both the planes
+* and before requesting buffers on either plane.
+*/
+#define V4L2_CID_MPEG_VIDEODEC_ENABLE_MVC (V4L2_CID_MPEG_BASE+596)
+
+/**
+ * Defines the Control ID to get number of operating points in AV1 decoder stream.
+ *
+ * This control returns unsigned integer of number of operating points.
+ *
+ * @attention This control must be set after receiving V4L2_EVENT_SVC_DATA.
+ *
+ */
+#define V4L2_CID_MPEG_VIDEODEC_NUM_OPERATING_POINTS (V4L2_CID_MPEG_BASE+597)
 
 /** @} */
 
@@ -773,6 +812,9 @@ struct v4l2_ctrl_vp8_frame_hdr {
  * - #V4L2_CID_MPEG_VIDEOENC_AV1_ENABLE_SSIMRDO
  * - #V4L2_CID_MPEG_VIDEOENC_AV1_DISABLE_CDF_UPDATE
  * - #V4L2_CID_MPEG_VIDEOENC_PPE_INIT_PARAMS
+ * - #V4L2_CID_MPEG_VIDEOENC_AV1_ERR_RESILIENT_MODE
+ * - #V4L2_CID_MPEG_VIDEOENC_AV1_ENABLE_FRAMEID_NUMBERS
+ * - #V4L2_CID_MPEG_VIDEOENC_AV1_ENABLE_TILE_GROUPS
  *
  * #### Setting Framerate
  * The encoder framerate can be set with \c VIDIOC_S_PARM IOCTL by setting the numerator
@@ -908,9 +950,9 @@ struct v4l2_ctrl_vp8_frame_hdr {
 #define V4L2_CID_MPEG_VIDEOENC_METADATA               (V4L2_CID_MPEG_BASE+536)
 
 /**
- * Defines the Control ID to enable/disable encoder motion vector reporting.
+ * Defines the Control ID to enable encoder motion vector reporting.
  *
- * A boolean value must be supplied with this control.
+ * No addtional parameter should be supplied with this control.
  *
  * @attention This control must be set after setting formats on both the planes
  * and before requesting buffers on either plane.
@@ -1316,7 +1358,7 @@ struct v4l2_ctrl_vp8_frame_hdr {
 /**
  * Defines the Control ID to enable lossless H.264/H.265 encoding.
  *
- * An boolean value must be supplied with this control. Default is 0.
+ * A boolean value must be supplied with this control. Default is 0.
  * Lossless encoding is supported only for YUV444 8/10-bit format.
  * @note This control must be set in case of H.264 YUV444 encoding as
  * it does not support lossy encoding.
@@ -1365,7 +1407,7 @@ struct v4l2_ctrl_vp8_frame_hdr {
  * Defines Control ID to configure TUNING INFO id for CUVID Encoder
  *
  * An integer value between 1 to 4 should be supplied with this control.
- *
+ * 
  * Check PRESET Guide for more details at
  * https://docs.nvidia.com/video-technologies/video-codec-sdk/nvenc-preset-migration-guide/index.html
  *
@@ -1383,14 +1425,114 @@ struct v4l2_ctrl_vp8_frame_hdr {
  */
 #define V4L2_CID_MPEG_VIDEOENC_CUDA_CONSTQP (V4L2_CID_MPEG_BASE+580)
 
-/** Defines Control ID to configure FPS VALUE for CUVID Encoder
+/**
+ * Defines the Control ID to disable Asymmetric Motion Partitions for H.265 encoding.
+ *
+ * A boolean value must be supplied with this control. Default is 0.
+ * @note This control is supported only for Xavier.
+ *
+ * @attention This control should be set after setting formats on both the planes
+ * and before requesting buffers on either plane.
+ */
+#define V4L2_CID_MPEG_VIDEOENC_H265_DISABLE_AMP (V4L2_CID_MPEG_BASE + 581)
+
+ /** Defines Control ID to configure FPS VALUE for CUVID Encoder
  *
  * A positive integer value should be supplied with this control.
  *
  * @attention This control is runtime configurable and can be called anytime after setting
  * formats on both the planes.
  */
-#define V4L2_CID_MPEG_VIDEOENC_RECONFIG_FPS (V4L2_CID_MPEG_BASE+581)
+#define V4L2_CID_MPEG_VIDEOENC_RECONFIG_FPS (V4L2_CID_MPEG_BASE+582)
+
+/** Defines Control ID to configure MAXBITRATE for CUVID Encoder
+ *
+ * A positive integer value should be supplied with this control.
+ *
+ * @attention This control is runtime configurable and can be called anytime after setting
+ * formats on both the planes.
+ */
+#define V4L2_CID_MPEG_VIDEO_MAXBITRATE 		(V4L2_CID_MPEG_BASE+583)
+
+/** Defines Control ID to configure VBV BUFFERSIZE for CUVID Encoder
+ *
+ * A positive integer value should be supplied with this control.
+ *
+ * @attention This control is runtime configurable and can be called anytime after setting
+ * formats on both the planes.
+ */
+#define V4L2_CID_MPEG_VIDEOENC_VBVBUFSIZE 		(V4L2_CID_MPEG_BASE+584)
+
+/** Defines Control ID to configure VBV INITIAL DELAY for CUVID Encoder
+ *
+ * A positive integer value should be supplied with this control.
+ *
+ * @attention This control is runtime configurable and can be called anytime after setting
+ * formats on both the planes.
+ */
+#define V4L2_CID_MPEG_VIDEOENC_VBVINIT 		(V4L2_CID_MPEG_BASE+585)
+
+/** Defines Control ID to enable Spatial AQ for CUVID Encoder
+ *
+ * A positive integer value in the range 0-15 should be supplied with this control.
+ * Default is 0 (automatic).
+ *
+ * @attention This control must be set after setting formats on both the planes
+ * and before requesting buffers on either plane.
+ */
+#define V4L2_CID_MPEG_VIDEOENC_ENABLE_AQ 		(V4L2_CID_MPEG_BASE+586)
+
+/** Defines Control ID to enable temporal AQ for CUVID Encoder
+ *
+ * A boolean value must be supplied with this control. Default is 0
+ *
+ * @attention This control must be set after setting formats on both the planes
+ * and before requesting buffers on either plane.
+ */
+#define V4L2_CID_MPEG_VIDEOENC_ENABLE_TEMPORAL_AQ 		(V4L2_CID_MPEG_BASE+587)
+
+/** Defines Control ID to configure target Quality for CUVID Encoder
+ *
+ * A positive integer value in the range 0-51 should be supplied with this control.
+ * Default is 0 (automatic).
+ *
+ * @attention This control must be set after setting formats on both the planes
+ * and before requesting buffers on either plane.
+ */
+#define V4L2_CID_MPEG_VIDEOENC_TARGET_QUALITY (V4L2_CID_MPEG_BASE+588)
+
+#define V4L2_CID_MPEG_VIDEOENC_COPY_TIMESTAMP (V4L2_CID_MPEG_BASE+589)
+
+#define V4L2_CID_MPEG_VIDEOENC_INTRA_REFRESH (V4L2_CID_MPEG_BASE+590)
+
+/**
+ * Defines the Control ID to enable/disable Error Resilient Mode for AV1.
+ *
+ * A boolean value should be supplied with this control.
+ * Default is true.
+ *
+ * @attention This control should be set after setting formats on both the planes
+ * and before requesting buffers on either plane.
+ **/
+#define V4L2_CID_MPEG_VIDEOENC_AV1_ERR_RESILIENT_MODE (V4L2_CID_MPEG_BASE + 592)
+
+/** Defines Control ID to enable FrameId Present flag for AV1
+ *
+ * A boolean value must be supplied with this control. Default is 0
+ *
+ * @attention This control must be set after setting formats on both the planes
+ * and before requesting buffers on either plane.
+ */
+#define V4L2_CID_MPEG_VIDEOENC_AV1_ENABLE_FRAMEID_NUMBERS (V4L2_CID_MPEG_BASE + 593)
+
+/** Defines Control ID to enable Tile groups for AV1
+ *
+ * A boolean value must be supplied with this control. Default is 0
+ *
+ * @attention This control must be set after setting formats on both the planes
+ * and before requesting buffers on either plane.
+ */
+#define V4L2_CID_MPEG_VIDEOENC_AV1_ENABLE_TILE_GROUPS (V4L2_CID_MPEG_BASE + 598)
 
 /** @} */
 
@@ -1646,6 +1788,7 @@ enum v4l2_videodec_input_error_type {
     V4L2_DEC_ERROR_MISSING_REF_FRAME = 0x8,
     /** VPS error. */
     V4L2_DEC_ERROR_VPS = 0x10,
+    V4L2_DEC_ERROR_FORCE32 = 0x7FFFFFFF
 };
 
 /**
@@ -1667,6 +1810,8 @@ typedef struct v4l2_ctrl_videodec_statusmetadata_
     __u32  nConcealedFromPOC;
     /** Time required to decode the frame, in microseconds. */
     __u32  FrameDecodeTime;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_ctrl_videodec_statusmetadata;
 
 /**
@@ -1688,6 +1833,8 @@ typedef struct v4l2_ctrl_videodec_refframe_metadata_
     __u32 nFrameNum;
     /** Long Term Frame Index of the frame. */
     __u32 nLTRFrameIdx;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_ctrl_videodec_refframe_metadata;
 
 /**
@@ -1707,6 +1854,8 @@ typedef struct v4l2_ctrl_videodec_currentframe_metadata_
     __u32 nFrameNum;
     /** Long Term Frame Index of the current frame. */
     __u32 nLTRFrameIdx;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_ctrl_videodec_currentframe_metadata;
 
 /**
@@ -1721,6 +1870,8 @@ typedef struct v4l2_ctrl_videodec_dpbinfometadata_
     /** An array of metadatas for the active frames in the DPB. Only
      *  nActiveRefFrames elements in the array are valid. */
     v4l2_ctrl_videodec_refframe_metadata RPSList[16];
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_ctrl_videodec_dpbinfometadata;
 
 /**
@@ -1737,6 +1888,8 @@ typedef struct v4l2_ctrl_h264dec_bufmetadata_
     __u32  FrameType;
     /** Holds the current DPB information of the decoder. */
     v4l2_ctrl_videodec_dpbinfometadata dpbInfo;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_ctrl_h264dec_bufmetadata;
 
 /**
@@ -1753,7 +1906,40 @@ typedef struct v4l2_ctrl_hevcdec_bufmetadata_
     __u32  FrameType;
     /** Holds the current DPB information of the decoder. */
     v4l2_ctrl_videodec_dpbinfometadata dpbInfo;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_ctrl_hevcdec_bufmetadata;
+
+typedef struct v4l2_ctrl_av1dec_bufmetadata_
+{
+    /** Holds the picture width information */
+    __u32 width;
+    /** Holds the picture height information */
+    __u32 height;
+    /** Holds the picture ref frame index information */
+    __s8 ref_frame_map_index[8];
+    /** Holds the picture view ID information */
+    __u16 viewIdInformation;
+    /** Holds the picture bit depth */
+    __u8  bitDepthInformation;
+    /** Holds the Quantization related information of the decoder. */
+    struct {
+        __u8 delta_q_present;
+        __u8 delta_q_res;
+        __u8 base_qindex;
+        __s8 y_dc_delta_q;
+        __s8 u_dc_delta_q;
+        __s8 v_dc_delta_q;
+        __s8 u_ac_delta_q;
+        __s8 v_ac_delta_q;
+        __u8 qm_y;
+        __u8 qm_u;
+        __u8 qm_v;
+    } quantization;
+
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
+}v4l2_ctrl_av1dec_bufmetadata;
 
 /**
  * Holds the video decoder input header error metadata for a frame.
@@ -1763,6 +1949,8 @@ typedef struct v4l2_ctrl_videodec_inputbuf_metadata_
     /** Bits represent types of error as defined
      *  with v4l2_videodec_input_error_type. */
     __u32 nBitStreamError;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_ctrl_videodec_inputbuf_metadata;
 
 /**
@@ -1786,7 +1974,11 @@ typedef struct v4l2_ctrl_videodec_outputbuf_metadata_
         v4l2_ctrl_h264dec_bufmetadata H264DecParams;
         /** H.265 specific metadata. */
         v4l2_ctrl_hevcdec_bufmetadata HEVCDecParams;
+        /** AV1 specific metadata. */
+        v4l2_ctrl_av1dec_bufmetadata AV1DecParams;
     }CodecParams;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_ctrl_videodec_outputbuf_metadata;
 /** @} */
 
@@ -1794,9 +1986,27 @@ typedef struct v4l2_ctrl_videodec_outputbuf_metadata_
 /** @{ */
 
 /**
+ * Defines the possible profiles for H.265 encoder.
+ */
+enum v4l2_mpeg_video_h265_profile
+{
+    /** H.265 Main profile. */
+    V4L2_MPEG_VIDEO_H265_PROFILE_MAIN = 0,
+    /** H.265 Main10 profile. */
+    V4L2_MPEG_VIDEO_H265_PROFILE_MAIN10 = 1,
+    /** H.265 MainStillPicture profile. */
+    V4L2_MPEG_VIDEO_H265_PROFILE_MAINSTILLPICTURE = 2,
+    /** H.265 FREXT profile. */
+    V4L2_MPEG_VIDEO_H265_PROFILE_FREXT = 3,
+
+    V4L2_MPEG_VIDEO_H265_FORCE32 = 0x7FFFFFFF
+};
+
+/**
  * Specifies the types of encoder temporal tradeoff levels
  */
-enum v4l2_enc_temporal_tradeoff_level_type {
+enum v4l2_enc_temporal_tradeoff_level_type
+{
     /** Do not drop any buffers. */
     V4L2_ENC_TEMPORAL_TRADEOFF_LEVEL_DROPNONE = 0,
     /** Drop 1 in every 5 buffers. */
@@ -1812,7 +2022,8 @@ enum v4l2_enc_temporal_tradeoff_level_type {
 /**
  * Specifies the encoder HW Preset type.
  */
-enum v4l2_enc_hw_preset_type {
+enum v4l2_enc_hw_preset_type
+{
     /** Encoder HWPreset DISABLED. */
     V4L2_ENC_HW_PRESET_DISABLE = 0,
     /** Encoder HWPreset with per frame encode time UltraFast. */
@@ -1823,12 +2034,15 @@ enum v4l2_enc_hw_preset_type {
     V4L2_ENC_HW_PRESET_MEDIUM,
     /** Encoder HWPreset with per frame encode time Slow. */
     V4L2_ENC_HW_PRESET_SLOW,
+    /** Last value is Max value. */
+    V4L2_ENC_HW_PRESET_DEFAULT = 0x7FFFFFFF
 };
 
 /**
  * Specifies the encoder HW Preset type.
  */
-enum v4l2_enc_hw_tuning_info_type {
+enum v4l2_enc_hw_tuning_info_type
+{
     /** Encoder Tuning Info Undefined */
     V4L2_ENC_TUNING_INFO_UNDEFINED = 0,
     /** Encoder Tuning Info High Quality */
@@ -1839,6 +2053,8 @@ enum v4l2_enc_hw_tuning_info_type {
     V4L2_ENC_TUNING_INFO_ULTRA_LOW_LATENCY,
     /** Encoder Tuning Info Lossless */
     V4L2_ENC_TUNING_INFO_LOSSLESS,
+    /** Last value is Max value. */
+    V4L2_ENC_TUNING_INFO_FORCE32 = 0x7FFFFFFF
 };
 
 /**
@@ -1851,12 +2067,15 @@ typedef struct v4l2_enc_hw_preset_type_param_
     enum v4l2_enc_hw_preset_type hw_preset_type;
     /** Boolean value indicating if encoder set to max clock. */
     __u8 set_max_enc_clock;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_hw_preset_type_param;
 
 /**
  * Enum specifying the type of slice length.
  */
-enum v4l2_enc_slice_length_type {
+enum v4l2_enc_slice_length_type
+{
     /** Slice size is specified in terms of number of bytes. */
     V4L2_ENC_SLICE_LENGTH_TYPE_BITS = 0,
     /** Slice size is specified in terms of number of macroblocks. */
@@ -1866,7 +2085,8 @@ enum v4l2_enc_slice_length_type {
 /**
  * Specifies the input buffer metadata flag.
  */
-enum v4l2_enc_input_metadata_param {
+enum v4l2_enc_input_metadata_param
+{
     /** Input metadata structure contains ROI parameters.  */
     V4L2_ENC_INPUT_ROI_PARAM_FLAG = 1,
     /** Input metadata structure contains GDR parameters.  */
@@ -1877,6 +2097,10 @@ enum v4l2_enc_input_metadata_param {
     V4L2_ENC_INPUT_RC_PARAM_FLAG = 1 << 3,
     /** Input metadata structure contains ReconCRC parameters.  */
     V4L2_ENC_INPUT_RECONCRC_PARAM_FLAG = 1 << 4,
+    /** Input metadata structure contains AV1 Tile Groups parameters.  */
+    V4L2_ENC_INPUT_TG_PARAM_FLAG = 1 << 5,
+    /** Last value is Max value. */
+    V4L2_ENC_INPUT_FORCE32 = 0x7FFFFFFF
 };
 
 /**
@@ -1924,6 +2148,8 @@ typedef struct v4l2_enc_slice_length_param_
     enum v4l2_enc_slice_length_type slice_length_type;
     /** Size of the slice in either number of bytes or number of macro blocks. */
     __u32   slice_length;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_slice_length_param;
 
 /**
@@ -1939,13 +2165,13 @@ typedef struct v4l2_enc_virtual_buffer_size_
 /**
  * Holds encoder number of reference frame parameters, to be used with
  * \c V4L2_CID_MPEG_VIDEOENC_NUM_REFERENCE_FRAMES IOCTL.
- *
- * This is not supported for H.265.
  */
 typedef struct v4l2_enc_num_ref_frames_
 {
     /** Number of reference frames. */
     __u32   frames;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_num_ref_frames;
 
 /**
@@ -1956,6 +2182,8 @@ typedef struct v4l2_enc_slice_intrarefresh_param_
 {
     /** Slice intrarefresh interval, in number of slices. */
     __u32   interval;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_slice_intrarefresh_param;
 
 /**
@@ -1972,6 +2200,8 @@ typedef struct v4l2_enc_ROI_param_
     struct v4l2_rect  ROIRect;
     /** QP delta for the region. */
     __s32   QPdelta;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_enc_ROI_param;
 
 /**
@@ -1988,16 +2218,23 @@ typedef struct v4l2_enc_frame_ROI_params_
      *  This must be same as the value of config store of \c v4l2_buffer to which
      *  the ROI params is applied. */
     __u32   config_store;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_frame_ROI_params;
 
 /**
  * Defines the available features for preprocessing enhancement (PPE) module
  */
-enum v4l2_ppe_feature {
+enum v4l2_ppe_feature
+{
     /** Default value for no feature enabled */
     V4L2_PPE_FEATURE_NONE = 0,
     /** Temporal Adaptive Quantization (TAQ) */
     V4L2_PPE_FEATURE_TAQ = (1 << 0),
+    /** Spatial Adaptive Quantization (SAQ) */
+    V4L2_PPE_FEATURE_SAQ = (1 << 1),
+    /** Last value is Max value. */
+    V4L2_PPE_FEATURE_FORCE32 = 0x7FFFFFFF
 };
 
 /**
@@ -2012,12 +2249,16 @@ typedef struct v4l2_enc_ppe_init_params_
     __u32 feature_flags;
     /** Boolean value indicating if profiler should be enabled */
     __u8 enable_profiler;
-    /** The max number of milliseconds that Nvmedia should wait for each frame processing */
+    /** The max number of milliseconds that the encoder should wait for each frame processing */
     __s32 wait_time_ms;
     /** Maximum strength of QP delta map for TAQ */
     __u8 taq_max_qp_delta;
     /** Boolean value indicating if TAQ should be applied for B-frames */
     __u8 taq_b_frame_mode;
+    /** Maximum strength of QP delta map for SAQ */
+    __u8 saq_max_qp_delta;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[3];
 }v4l2_enc_ppe_init_params;
 
 /**
@@ -2032,6 +2273,8 @@ typedef struct MVInfo_ {
     __s32 mv_y   : 14;
     /** Temporal hints used by hardware for Motion Estimation. */
     __u32 weight : 2;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } MVInfo;
 
 /**
@@ -2042,6 +2285,8 @@ typedef struct v4l2_ctrl_videoenc_outputbuf_metadata_MV_ {
     __u32 bufSize;
     /** Pointer to the buffer containing the motion vectors. */
     MVInfo *pMVInfo;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_ctrl_videoenc_outputbuf_metadata_MV;
 
 /**
@@ -2066,7 +2311,46 @@ typedef struct v4l2_enc_frame_full_prop_
     __u32  nFrameNum;
     /** LongTermFrameIdx of a picture. */
     __u32  nLTRFrameIdx;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_enc_frame_full_prop;
+
+/**
+ * Defines metadata associated with H264 features.
+ */
+typedef struct
+{
+    /** Reserved fields are added for extensibility. */
+    __u8 reserved[128];
+} v4l2_ctrl_h264enc_metadata;
+
+/**
+ * Defines metadata associated with H265 features.
+ */
+typedef struct
+{
+    /** Reserved fields are added for extensibility. */
+    __u8 reserved[128];
+} v4l2_ctrl_hevcenc_metadata;
+
+/**
+ * Defines metadata associated with AV1 features.
+ */
+typedef struct
+{
+    /** Refresh frame flags */
+    __u8 refreshFrameFlags;
+    /** List of reference frame IDs used for current frame */
+    __u8 refFrameIndex[V4L2_MAX_REF_FRAMES];
+    /** Number of TileRows computed based on input log2TileRows */
+    __u8 numTileRows;
+    /** Number of TileCols computed based on input log2TileCols */
+    __u8 numTileCols;
+    /** Number of TileGroups */
+    __u8 numTileGroups;
+    /** Reserved fields are added for extensibility. */
+    __u8 reserved[116];
+} v4l2_ctrl_av1enc_metadata;
 
 /**
  * Holds the encoder output metadata for a frame, to be used with
@@ -2105,6 +2389,19 @@ typedef struct v4l2_ctrl_videoenc_outputbuf_metadata_
     __u32 nActiveRefFrames;
     /** RPS List including most recent frame if it is reference frame. */
     v4l2_enc_frame_full_prop RPSList[V4L2_MAX_REF_FRAMES];
+
+    union
+    {
+        /** H.264 specific metadata. */
+        v4l2_ctrl_h264enc_metadata *pH264EncMeta;
+        /** H.265 specific metadata. */
+        v4l2_ctrl_hevcenc_metadata *pHEVCEncMeta;
+        /** AV1 specific metadata. */
+        v4l2_ctrl_av1enc_metadata *pAV1EncMeta;
+    } CodecMeta;
+
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[2];
 } v4l2_ctrl_videoenc_outputbuf_metadata;
 
 /**
@@ -2133,6 +2430,8 @@ typedef struct v4l2_ctrl_video_metadata_
     v4l2_ctrl_videoenc_outputbuf_metadata_MV *VideoEncMetadataMV;
     /** Index of the buffer whose metadata is required. */
     __u32 buffer_index;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_ctrl_video_metadata;
 
 /**
@@ -2143,6 +2442,8 @@ typedef struct v4l2_enc_gdr_params_
 {
     /** Parameter for GDR (Intra Refresh) for specified number of frames. */
     __u32 nGDRFrames;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_enc_gdr_params;
 
 /**
@@ -2159,6 +2460,8 @@ typedef struct v4l2_enc_enable_ext_rps_ctrl_
     __u32 nH264FrameNumBits;
     /* TODO : Check for field details. */
     __u32 nH265PocLsbBits;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_enable_ext_rps_ctr;
 
 
@@ -2171,7 +2474,40 @@ typedef struct _v4l2_enc_frame_prop
     __u32 nFrameId;
     /** Long Term Ref Flag. */
     __u8 bLTRefFrame;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 } v4l2_enc_frame_prop;
+
+/**
+ * Defines input metadata associated with H264 features.
+ */
+typedef struct
+{
+    /** Reserved fields are added for extensibility. */
+    __u8 reserved[128];
+} v4l2_ctrl_h264enc_inputmetadata;
+
+/**
+ * Defines input metadata associated with H265 features.
+ */
+typedef struct
+{
+    /** Reserved fields are added for extensibility. */
+    __u8 reserved[128];
+} v4l2_ctrl_hevcenc_inputmetadata;
+
+/**
+ * Defines input metadata associated with AV1 features.
+ */
+typedef struct
+{
+    /** Refresh frame flags to inform which ref frame slots to update */
+    __u8 refreshFrameFlags;
+    /** RPS paramter for current frame to use */
+    __u8 refFrameIndex[V4L2_MAX_REF_FRAMES];
+    /** Reserved fields are added for extensibility. */
+    __u8 reserved[119];
+} v4l2_ctrl_av1enc_inputmetadata;
 
 /**
  * Holds the encoder frame external rps control parameters
@@ -2193,6 +2529,19 @@ typedef struct v4l2_enc_frame_ext_rps_ctrl_params_
     __u32 nCurrentRefFrameId;
     /** Array of RPS */
     v4l2_enc_frame_prop RPSList[V4L2_MAX_REF_FRAMES];
+    /** Input Metadata for each codec*/
+    union
+    {
+        /** H.264 specific metadata. */
+        v4l2_ctrl_h264enc_inputmetadata *pH264EncParams;
+        /** H.265 specific metadata. */
+        v4l2_ctrl_hevcenc_inputmetadata *pHEVCEncParams;
+        /** AV1 specific metadata. */
+        v4l2_ctrl_av1enc_inputmetadata *pAV1EncParams;
+    } CodecParams;
+
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[2];
 }v4l2_enc_frame_ext_rps_ctrl_params;
 
 
@@ -2206,6 +2555,8 @@ typedef struct v4l2_enc_enable_ext_rate_ctrl_
     __u8 bEnableExternalPictureRC;
     /** Max QP per session when external picture RC enabled. */
     __u32 nsessionMaxQP;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_enable_ext_rate_ctr;
 
 /**
@@ -2224,6 +2575,8 @@ typedef struct v4l2_enc_frame_ext_rate_ctrl_params_
     __u32 nFrameMaxQp;
     /** Frame min QP deviation. */
     __u32 nMaxQPDeviation;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_frame_ext_rate_ctrl_params;
 
 /**
@@ -2235,6 +2588,8 @@ typedef struct v4l2_enc_enable_roi_param_
 {
     /** Boolean value to indicating ROI param encoding. */
     __u8 bEnableROI;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_enable_roi_param;
 
 /**
@@ -2246,6 +2601,8 @@ typedef struct v4l2_enc_enable_reconcrc_param_
 {
     /** Boolean value to indicating Reconstructed CRC encoding. */
     __u8 bEnableReconCRC;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_enable_reconcrc_param;
 
 /**
@@ -2258,7 +2615,25 @@ typedef struct v4l2_enc_frame_ReconCRC_params_
     /** Rectangle to specify the co-ordinates of the input frame
     * used to calculate reconstructed picture CRC. */
     struct v4l2_rect  ReconCRCRect;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_enc_frame_ReconCRC_params;
+
+/**
+ * Holds the encoder frame AV1 Tile groups.
+ *
+ * Must be used with #V4L2_CID_MPEG_VIDEOENC_INPUT_METADATA IOCTL.
+ */
+typedef struct v4l2_enc_frame_tile_groups_params_
+{
+    /** Tile group related parameters **/
+    __u8 tileRows;
+    __u8 tileCols;
+    __u8 tileGroups;
+    __u8 tileIndexGroup[128];
+    /** Reserved fields are added for extensibility. */
+    __u8 reserved[128];
+} v4l2_enc_frame_tile_groups_params;
 
 /**
  * Holds the encoder frame input metadata parameters.
@@ -2282,10 +2657,15 @@ typedef struct v4l2_ctrl_videoenc_input_metadata_
     /** Pointer to the External Rate control parameter structure when RC param is in
     * metadata flag. */
     v4l2_enc_frame_ext_rate_ctrl_params *VideoEncExtRCParams;
+    /** Pointer to the AV1 Tile Groups parameter structure when TG param is in
+     * metadata flag. */
+    v4l2_enc_frame_tile_groups_params *VideoEncAV1TGParams;
     /** Config store integer to which these parameters are to be applied.
      *  This must be same as the value of config store of queued v4l2_buffer
      *   for which these parameters are valid. */
     __u32    config_store;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[2];
 } v4l2_ctrl_videoenc_input_metadata;
 
 /**
@@ -2314,6 +2694,16 @@ typedef struct _v4l2_ctrl_video_qp_range
     /** Maximum QP value for B frame. */
     __u32 MaxQpB;
 } v4l2_ctrl_video_qp_range;
+
+
+typedef struct _v4l2_ctrl_intra_refresh
+{
+    __u32 enableIntraRefresh;
+    __u32 intraRefreshPeriod;
+    __u32 intraRefreshCnt;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
+}v4l2_ctrl_intra_refresh;
 
 typedef struct _v4l2_ctrl_video_constqp
 {
@@ -2372,6 +2762,7 @@ enum v4l2_argus_denoise_mode {
     V4L2_ARGUS_DENOISE_MODE_OFF             = 1,
     V4L2_ARGUS_DENOISE_MODE_FAST            = 2,
     V4L2_ARGUS_DENOISE_MODE_HIGH_QUALITY    = 3,
+    V4L2_ARGUS_DENOISE_MODE_FORCE32         = 0x7FFFFFF
 };
 
 /**
@@ -2382,6 +2773,7 @@ enum v4l2_argus_edge_enhance_mode {
     V4L2_ARGUS_EDGE_ENHANCE_MODE_OFF            = 1,
     V4L2_ARGUS_EDGE_ENHANCE_MODE_FAST           = 2,
     V4L2_ARGUS_EDGE_ENHANCE_MODE_HIGH_QUALITY   = 3,
+    V4L2_ARGUS_EDGE_ENHANCE_MODE_FORCE32        = 0x7FFFFFF
 };
 
 /**
@@ -2393,6 +2785,7 @@ enum v4l2_argus_ac_ae_antibanding_mode {
     V4L2_ARGUS_AE_ANTIBANDING_MODE_AUTO     = 2,
     V4L2_ARGUS_AE_ANTIBANDING_MODE_50HZ     = 3,
     V4L2_ARGUS_AE_ANTIBANDING_MODE_60HZ     = 4,
+    V4L2_ARGUS_AE_ANTIBANDING_MODE_FORCE32  = 0x7FFFFFF
 };
 
 /**
@@ -2409,6 +2802,7 @@ enum v4l2_argus_ac_awb_mode {
     V4L2_ARGUS_AWB_MODE_TWILIGHT          = 8,
     V4L2_ARGUS_AWB_MODE_SHADE             = 9,
     V4L2_ARGUS_AWB_MODE_MANUAL            = 10,
+    V4L2_ARGUS_AWB_MODE_FORCE32           = 0x7FFFFFF
 };
 
 /**
@@ -2421,6 +2815,7 @@ enum v4l2_argus_ae_state {
     V4L2_ARGUS_AE_STATE_CONVERGED         = 3,
     V4L2_ARGUS_AE_STATE_FLASH_REQUIRED    = 4,
     V4L2_ARGUS_AE_STATE_TIMEOUT           = 5,
+    V4L2_ARGUS_AE_STATE_FORCE32           = 0x7FFFFFF
 };
 
 /**
@@ -2432,6 +2827,7 @@ enum v4l2_argus_awb_state {
     V4L2_ARGUS_AWB_STATE_SEARCHING        = 2,
     V4L2_ARGUS_AWB_STATE_CONVERGED        = 3,
     V4L2_ARGUS_AWB_STATE_LOCKED           = 4,
+    V4L2_ARGUS_AWB_STATE_FORCE32          = 0x7FFFFFF
 };
 
 /**
@@ -2555,6 +2951,8 @@ typedef struct _v4l2_argus_ctrl_metadata
     enum v4l2_argus_ae_state AEState;
     /** AWB state ran for capture **/
     enum v4l2_argus_awb_state AWBState;
+    /** Reserved fields are added for extensibility. */
+    __u32 reserved[4];
 }v4l2_argus_ctrl_metadata;
 /** @} */
 
@@ -2651,4 +3049,272 @@ typedef struct _v4l2_ctrl_video_device_poll
 } v4l2_ctrl_video_device_poll;
 
 /** @} */
+
+/**
+ * @defgroup V4L2 V4L2 over IPC
+ *
+ * @brief NVIDIA V4L2 IPC Description and Extensions
+ *
+ */
+/** @addtogroup V4L2 */
+/** @{ */
+
+typedef enum
+{
+    /** Specifies an invalid color format. */
+    V4L2_COLORFORMAT_INVALID,
+    /** Specifies 8 bit GRAY scale - single plane */
+    V4L2_COLORFORMAT_GRAY8,
+    /** Specifies BT.601 colorspace - YUV420 multi-planar. */
+    V4L2_COLORFORMAT_YUV420,
+    /** Specifies BT.601 colorspace - YUV420 multi-planar. */
+    V4L2_COLORFORMAT_YVU420,
+    /** Specifies BT.601 colorspace - YUV420 ER multi-planar. */
+    V4L2_COLORFORMAT_YUV420_ER,
+    /** Specifies BT.601 colorspace - YVU420 ER multi-planar. */
+    V4L2_COLORFORMAT_YVU420_ER,
+    /** Specifies BT.601 colorspace - Y/CbCr 4:2:0 multi-planar. */
+    V4L2_COLORFORMAT_NV12,
+    /** Specifies BT.601 colorspace - Y/CbCr ER 4:2:0 multi-planar. */
+    V4L2_COLORFORMAT_NV12_ER,
+    /** Specifies BT.601 colorspace - Y/CbCr 4:2:0 multi-planar. */
+    V4L2_COLORFORMAT_NV21,
+    /** Specifies BT.601 colorspace - Y/CbCr ER 4:2:0 multi-planar. */
+    V4L2_COLORFORMAT_NV21_ER,
+    /** Specifies BT.601 colorspace - YUV 4:2:2 planar. */
+    V4L2_COLORFORMAT_UYVY,
+    /** Specifies BT.601 colorspace - YUV ER 4:2:2 planar. */
+    V4L2_COLORFORMAT_UYVY_ER,
+    /** Specifies BT.601 colorspace - YUV 4:2:2 planar. */
+    V4L2_COLORFORMAT_VYUY,
+    /** Specifies BT.601 colorspace - YUV ER 4:2:2 planar. */
+    V4L2_COLORFORMAT_VYUY_ER,
+    /** Specifies BT.601 colorspace - YUV 4:2:2 planar. */
+    V4L2_COLORFORMAT_YUYV,
+    /** Specifies BT.601 colorspace - YUV ER 4:2:2 planar. */
+    V4L2_COLORFORMAT_YUYV_ER,
+    /** Specifies BT.601 colorspace - YUV 4:2:2 planar. */
+    V4L2_COLORFORMAT_YVYU,
+    /** Specifies BT.601 colorspace - YUV ER 4:2:2 planar. */
+    V4L2_COLORFORMAT_YVYU_ER,
+    /** Specifies BT.601 colorspace - YUV444 multi-planar. */
+    V4L2_COLORFORMAT_YUV444,
+    /** Specifies RGBA-8-8-8-8 single plane. */
+    V4L2_COLORFORMAT_RGBA,
+    /** Specifies BGRA-8-8-8-8 single plane. */
+    V4L2_COLORFORMAT_BGRA,
+    /** Specifies ARGB-8-8-8-8 single plane. */
+    V4L2_COLORFORMAT_ARGB,
+    /** Specifies ABGR-8-8-8-8 single plane. */
+    V4L2_COLORFORMAT_ABGR,
+    /** Specifies RGBx-8-8-8-8 single plane. */
+    V4L2_COLORFORMAT_RGBx,
+    /** Specifies BGRx-8-8-8-8 single plane. */
+    V4L2_COLORFORMAT_BGRx,
+    /** Specifies xRGB-8-8-8-8 single plane. */
+    V4L2_COLORFORMAT_xRGB,
+    /** Specifies xBGR-8-8-8-8 single plane. */
+    V4L2_COLORFORMAT_xBGR,
+    /** Specifies RGB-8-8-8 single plane. */
+    V4L2_COLORFORMAT_RGB,
+    /** Specifies BGR-8-8-8 single plane. */
+    V4L2_COLORFORMAT_BGR,
+    /** Specifies BT.601 colorspace - Y/CbCr 4:2:0 10-bit multi-planar. */
+    V4L2_COLORFORMAT_NV12_10LE,
+    /** Specifies BT.601 colorspace - Y/CbCr 4:2:0 12-bit multi-planar. */
+    V4L2_COLORFORMAT_NV12_12LE,
+    /** Specifies BT.709 colorspace - YUV420 multi-planar. */
+    V4L2_COLORFORMAT_YUV420_709,
+    /** Specifies BT.709 colorspace - YUV420 ER multi-planar. */
+    V4L2_COLORFORMAT_YUV420_709_ER,
+    /** Specifies BT.709 colorspace - Y/CbCr 4:2:0 multi-planar. */
+    V4L2_COLORFORMAT_NV12_709,
+    /** Specifies BT.709 colorspace - Y/CbCr ER 4:2:0 multi-planar. */
+    V4L2_COLORFORMAT_NV12_709_ER,
+    /** Specifies BT.2020 colorspace - YUV420 multi-planar. */
+    V4L2_COLORFORMAT_YUV420_2020,
+    /** Specifies BT.2020 colorspace - Y/CbCr 4:2:0 multi-planar. */
+    V4L2_COLORFORMAT_NV12_2020,
+    /** Specifies BT.601 colorspace - Y/CbCr ER 4:2:0 10-bit multi-planar. */
+    V4L2_COLORFORMAT_NV12_10LE_ER,
+    /** Specifies BT.709 colorspace - Y/CbCr 4:2:0 10-bit multi-planar. */
+    V4L2_COLORFORMAT_NV12_10LE_709,
+    /** Specifies BT.709 colorspace - Y/CbCr ER 4:2:0 10-bit multi-planar. */
+    V4L2_COLORFORMAT_NV12_10LE_709_ER,
+    /** Specifies BT.2020 colorspace - Y/CbCr 4:2:0 10-bit multi-planar. */
+    V4L2_COLORFORMAT_NV12_10LE_2020,
+    /** Specifies color format for packed 2 signed shorts  */
+    V4L2_COLORFORMAT_SIGNED_R16G16,
+    /** Specifies RGB- unsigned 8 bit multiplanar plane. */
+    V4L2_COLORFORMAT_R8_G8_B8,
+    /** Specifies BGR- unsigned 8 bit multiplanar plane. */
+    V4L2_COLORFORMAT_B8_G8_R8,
+    /** Specifies RGB-32bit Floating point multiplanar plane. */
+    V4L2_COLORFORMAT_R32F_G32F_B32F,
+    /** Specifies BGR-32bit Floating point multiplanar plane. */
+    V4L2_COLORFORMAT_B32F_G32F_R32F,
+    /** Specifies BT.601 colorspace - YUV422 multi-planar. */
+    V4L2_COLORFORMAT_YUV422,
+    /** Specifies BT.601 colorspace - Y/CrCb 4:2:0 10-bit multi-planar. */
+    V4L2_COLORFORMAT_NV21_10LE,
+    /** Specifies BT.601 colorspace - Y/CrCb 4:2:0 12-bit multi-planar. */
+    V4L2_COLORFORMAT_NV21_12LE,
+    /** Specifies BT.2020 colorspace - Y/CbCr 4:2:0 12-bit multi-planar. */
+    V4L2_COLORFORMAT_NV12_12LE_2020,
+    /** Specifies BT.601 colorspace - Y/CbCr 4:2:2 multi-planar. */
+    V4L2_COLORFORMAT_NV16,
+    /** Specifies BT.601 colorspace - Y/CbCr 4:2:2 10-bit semi-planar. */
+    V4L2_COLORFORMAT_NV16_10LE,
+    /** Specifies BT.601 colorspace - Y/CbCr 4:4:4 multi-planar. */
+    V4L2_COLORFORMAT_NV24,
+    /** Specifies BT.601 colorspace - Y/CrCb 4:4:4 10-bit multi-planar. */
+    V4L2_COLORFORMAT_NV24_10LE,
+    /** Specifies BT.601_ER colorspace - Y/CbCr 4:2:2 multi-planar. */
+    V4L2_COLORFORMAT_NV16_ER,
+    /** Specifies BT.601_ER colorspace - Y/CbCr 4:4:4 multi-planar. */
+    V4L2_COLORFORMAT_NV24_ER,
+    /** Specifies BT.709 colorspace - Y/CbCr 4:2:2 multi-planar. */
+    V4L2_COLORFORMAT_NV16_709,
+    /** Specifies BT.709 colorspace - Y/CbCr 4:4:4 multi-planar. */
+    V4L2_COLORFORMAT_NV24_709,
+    /** Specifies BT.709_ER colorspace - Y/CbCr 4:2:2 multi-planar. */
+    V4L2_COLORFORMAT_NV16_709_ER,
+    /** Specifies BT.709_ER colorspace - Y/CbCr 4:4:4 multi-planar. */
+    V4L2_COLORFORMAT_NV24_709_ER,
+    /** Specifies BT.709 colorspace - Y/CbCr 10 bit 4:4:4 multi-planar. */
+    V4L2_COLORFORMAT_NV24_10LE_709,
+    /** Specifies BT.709 ER colorspace - Y/CbCr 10 bit 4:4:4 multi-planar. */
+    V4L2_COLORFORMAT_NV24_10LE_709_ER,
+    /** Specifies BT.2020 colorspace - Y/CbCr 10 bit 4:4:4 multi-planar. */
+    V4L2_COLORFORMAT_NV24_10LE_2020,
+    /** Specifies BT.2020 colorspace - Y/CbCr 12 bit 4:4:4 multi-planar. */
+    V4L2_COLORFORMAT_NV24_12LE_2020,
+    /** Specifies Non-linear RGB BT.709 colorspace - RGBA-10-10-10-2 planar. */
+    V4L2_COLORFORMAT_RGBA_10_10_10_2_709,
+    /** Specifies Non-linear RGB BT.2020 colorspace - RGBA-10-10-10-2 planar. */
+    V4L2_COLORFORMAT_RGBA_10_10_10_2_2020,
+    /** Specifies Non-linear RGB BT.709 colorspace - BGRA-10-10-10-2 planar. */
+    V4L2_COLORFORMAT_BGRA_10_10_10_2_709,
+    /** Specifies Non-linear RGB BT.2020 colorspace - BGRA-10-10-10-2 planar. */
+    V4L2_COLORFORMAT_BGRA_10_10_10_2_2020,
+    /** Specifies Optical flow SAD calculation Buffer format */
+    V4L2_COLORFORMAT_A32,
+    /** Specifies BT.601 colorspace - 10 bit YUV 4:2:2 interleaved. */
+    V4L2_COLORFORMAT_UYVP,
+    /** Specifies BT.601 colorspace - 10 bit YUV ER 4:2:2 interleaved. */
+    V4L2_COLORFORMAT_UYVP_ER,
+
+    V4L2_COLORFORMAT_LAST
+} v4l2_color_format;
+
+/**
+ * Defines buffer surface layout.
+ */
+typedef enum
+{
+    /** Pitch linear layout. */
+    V4L2_LAYOUT_PITCH,
+    /** Block linear layout. */
+    V4L2_LAYOUT_BLOCK_LINEAR,
+} v4l2_surface_layout;
+
+/**
+ * Defines Display scan formats.
+ */
+typedef enum
+{
+    /** Progessive scan formats. */
+    V4L2_DISPLAY_SCAN_FORMAT_PROGRESSIVE = 0,
+    /** Interlaced scan formats. */
+    V4L2_DISPLAY_SCAN_FORMAT_INTERLACED,
+} v4l2_displayscan_format;
+
+/**
+ * Defined memory types for buffer.
+ */
+typedef enum
+{
+    V4L2_MEM_DEFAULT,
+    /** CUDA Host memory type. */
+    V4L2_MEM_CUDA_PINNED,
+    /** CUDA Device memory type. */
+    V4L2_MEM_CUDA_DEVICE,
+    /** CUDA Unified memory type. */
+    V4L2_MEM_CUDA_UNIFIED,
+    /** NVRM Surface Array type. Valid only for Jetson. */
+    V4L2_MEM_SURFACE_ARRAY,
+    /** NVRM Handle type. Valid only for Jetson. */
+    V4L2_MEM_HANDLE,
+    /** Memory allocated by malloc() */
+    V4L2_MEM_SYSTEM,
+} v4l2_buffer_mem_type;
+
+/**
+ * Holds Chroma Subsampling parameters.
+ */
+typedef struct _v4l2_chroma_subsampling_params
+{
+    /** location settings */
+    __u8 chromaloc_horiz;
+    __u8 chromaloc_vert;
+} v4l2_chroma_subsampling_params;
+
+/**
+ * Holds parameters for a hardware buffer.
+ */
+typedef struct _v4l2_map_plane
+{
+    /** width of each planes of hardware buffer. */
+    __u32 width;
+    /** height of each planes of hardware buffer. */
+    __u32 height;
+    /** pitch of each planes of hardware buffer. */
+    __u32 pitch;
+    /** memory offset values of each video planes of hardware buffer. */
+    __u32 offset;
+    /** size of each video planes of hardware buffer. */
+    __u32 psize;
+    /** block height of the planes for blockLinear layout buffer */
+    __u32 blockheightlog2;
+    /** offset of the second field for interlaced buffer */
+    __u32 secondfieldoffset;
+    /** flags associated with the planes */
+    __u64 flags;
+
+    __u8 reserved[64];
+} v4l2_map_plane;
+
+struct v4l2_map_buffer
+{
+    __u32 index;
+    __u32 type;
+    /** number of planes of hardware buffer. */
+    __u32 num_planes;
+    /** GPU ID */
+    __u32 gpuid;
+    /** DMABUF FD */
+    __u64 fd;
+    /** total size of allocated memory */
+    __u32 total_size;
+    /** type of memory */
+    v4l2_buffer_mem_type memtype;
+    /** BL or PL layout */
+    v4l2_surface_layout layout;
+    /** display scan format */
+    v4l2_displayscan_format scanformat;
+    /** color format */
+    v4l2_color_format colorformat;
+    /** Holds chroma subsampling parameters */
+    v4l2_chroma_subsampling_params chromasubsampling;
+    /** plane parameters */
+    v4l2_map_plane *map_planes;
+
+    __u8 reserved[64];
+};
+
+#define V4L2_IPC_MAP_BUFFER _IOWR('V', BASE_VIDIOC_PRIVATE + 1, struct v4l2_map_buffer)
+#define V4L2_IPC_UNMAP_BUFFER _IOWR('V', BASE_VIDIOC_PRIVATE + 2, struct v4l2_map_buffer)
+
+/** @} */
+
 #endif /*__V4L2_NV_EXTENSIONS_H__*/

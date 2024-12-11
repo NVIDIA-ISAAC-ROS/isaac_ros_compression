@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
-
 #ifndef NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEOENCODER_CONTEXT_HPP_
 #define NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEOENCODER_CONTEXT_HPP_
 
@@ -96,6 +95,8 @@ struct nvmpictx {
   // Number of B frames in a GOP
   uint32_t num_of_bframes;
   int32_t rate_control_mode;
+  // Cuda device id
+  int32_t device_id;
 };
 
 
@@ -116,8 +117,11 @@ class VideoEncoderContext : public gxf::Component {
   gxf_result_t initalizeContext();
   // Async Scheduling Term required to get/set event state.
   gxf::Parameter<gxf::Handle<gxf::AsynchronousSchedulingTerm>> scheduling_term_;
+  // Function to check WSL platform
+  bool isWSLPlatform();
+  // cuda device id
+  gxf::Parameter<int32_t> device_id_;
 };
-
 
 }  // namespace gxf
 }  // namespace nvidia

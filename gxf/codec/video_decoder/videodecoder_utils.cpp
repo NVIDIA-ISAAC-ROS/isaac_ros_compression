@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ int32_t set_output_plane_format(nvmpictx* ctx) {
   fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
   fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_H264;
   fmt.fmt.pix_mp.num_planes = 1;
-  fmt.fmt.pix_mp.plane_fmt[0].sizeimage = max_bitstream_size;
+  fmt.fmt.pix_mp.plane_fmt[0].sizeimage = ctx->max_bitstream_size;
 
   retval = v4l2_ioctl(ctx->dev_fd, VIDIOC_S_FMT, &fmt);
   return retval;
@@ -324,7 +324,7 @@ int32_t set_cuda_gpu_id(nvmpictx* ctx) {
   ctrls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
 
   control.id = V4L2_CID_MPEG_VIDEO_CUDA_GPU_ID;
-  control.value = 0;
+  control.value = ctx->device_id;
 
   GXF_LOG_DEBUG("Setting gpu id");
 

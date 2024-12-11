@@ -49,7 +49,6 @@ ament_auto_add_library(gxf_video_decoder_extension SHARED
 find_package(CUDAToolkit)
 
 # https://developer.nvidia.com/video_codec_sdk/downloads/v11-1-5
-# https://git-master.nvidia.com/r/plugins/gitiles/tegra/multimedia/libv4l2/+/refs/heads/rel-35
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
 target_include_directories(gxf_video_encoder_extension PUBLIC

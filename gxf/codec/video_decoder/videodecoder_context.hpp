@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
-
 #ifndef NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEODECODER_CONTEXT_HPP_
 #define NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEODECODER_CONTEXT_HPP_
 
@@ -64,6 +63,8 @@ struct nvmpictx {
   uint32_t error_in_decode_thread;
   timestamp_info input_timestamp;
   timestamp_info output_timestamp;
+  int32_t device_id;
+  uint32_t max_bitstream_size;
 
   nvidia::gxf::Handle<nvidia::gxf::AsynchronousSchedulingTerm> response_scheduling_term;
   std::queue<gxf::Entity> output_entity_queue;
@@ -86,6 +87,11 @@ class VideoDecoderContext : public gxf::Component {
  private:
   // Async Scheduling Term required to get/set event state.
   gxf::Parameter<gxf::Handle<gxf::AsynchronousSchedulingTerm>> response_scheduling_term_;
+  bool isWSLPlatform();
+  // cuda device id
+  gxf::Parameter<int32_t> device_id_;
+  // Max input frame size
+  gxf::Parameter<uint32_t> max_bitstream_size_;
 };
 
 }  // namespace gxf
