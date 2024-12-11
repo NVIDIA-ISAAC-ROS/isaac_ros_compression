@@ -15,8 +15,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <algorithm>
+#include <string>
 #include "videoencoder_context.hpp"
 #include "videoencoder_utils.hpp"
+
 namespace nvidia {
 namespace gxf {
 
@@ -31,7 +34,10 @@ gxf_result_t VideoEncoderContext::registerInterface(gxf::Registrar* registrar) {
   gxf::Expected<void> result;
 
   result &= registrar->parameter(scheduling_term_, "scheduling_term",
-      "Asynchronous Scheduling Term", "Asynchronous Scheduling Term");
+                                 "Asynchronous Scheduling Term", "Asynchronous Scheduling Term");
+
+  result &= registrar->parameter(device_id_, "device_id", "cuda device id",
+                                 "valid device id range is 0 to (cudaGetDeviceCount() - 1)", 0);
 
   return gxf::ToResultCode(result);
 }
@@ -89,8 +95,11 @@ gxf_result_t VideoEncoderContext::initialize() {
 }
 
 gxf_result_t VideoEncoderContext::initalizeContext() {
+  bool isWSL = isWSLPlatform();
+
   ctx_->scheduling_term = scheduling_term_.get();
   ctx_->scheduling_term->setEventState(nvidia::gxf::AsynchronousEventState::WAIT);
+  ctx_->device_id = device_id_;
   ctx_->index = 0;
   // Not using B frames
   ctx_->num_of_bframes = 0;
@@ -104,23 +113,35 @@ gxf_result_t VideoEncoderContext::initalizeContext() {
   ctx_->output_buffer_idx = 0;
   ctx_->dqbuf_index = 0;
 
-  int32_t retval = 0;
-  // Check for nvgpu device and set is_cuvid flag accordingly
-  retval = system("lsmod | grep 'nvgpu' > /dev/null");
-  if (retval == -1) {
-    GXF_LOG_ERROR("Error in grep for nvgpu device");
+  int32_t device_count;
+  cudaDeviceProp prop;
+  cudaError_t status;
+  status = cudaGetDeviceCount(&device_count);
+  if (status != cudaSuccess) {
+    GXF_LOG_ERROR("cudaGetDevice failed");
     return GXF_FAILURE;
-  } else if (retval == 0) {
-      ctx_->is_cuvid = false;
-  } else {
-      ctx_->is_cuvid = true;
   }
+  if (ctx_->device_id >= device_count) {
+    GXF_LOG_ERROR("invalid cuda device id set");
+    return GXF_FAILURE;
+  }
+  status = cudaGetDeviceProperties(&prop, ctx_->device_id);
+  if (status != cudaSuccess) {
+    GXF_LOG_ERROR("cudaGetDeviceProperties failed");
+    return GXF_FAILURE;
+  }
+  ctx_->is_cuvid = !prop.integrated;
+
   /* This call creates a new V4L2 Video Encoder object
    on the device node.
+   device_ = "/dev/null" for WSL platform
    device_ = "/dev/nvidia0" for cuvid (for system with single GPU).
    device_ = "/dev/v4l2-nvenc" for tegra
   */
-  if (ctx_->is_cuvid) {
+  if (isWSL) {
+  GXF_LOG_INFO("WSL Platform, device name :%s", "/dev/null");
+  ctx_->dev_fd = v4l2_open("/dev/null", 0);
+  } else if (ctx_->is_cuvid) {
     /* For multi GPU systems, device = "/dev/nvidiaX",
      where X < number of GPUs in the system.
      Find the device node in the system by searching for /dev/nvidia*
@@ -215,6 +236,23 @@ gxf_result_t VideoEncoderContext::deinitialize() {
   v4l2_close(ctx_->dev_fd);
   delete ctx_;
   return GXF_SUCCESS;
+}
+
+bool VideoEncoderContext::isWSLPlatform() {
+  GXF_LOG_DEBUG("Entering in isWSLPlatform function");
+
+  std::ifstream file("/proc/version");
+  std::string line;
+  bool found = false;
+
+  if (file.is_open()) {
+    std::getline(file, line);
+    std::transform(line.begin(), line.end(), line.begin(), ::tolower);
+    found = (line.find("microsoft") != std::string::npos);
+    file.close();
+  }
+
+  return found;
 }
 
 }  // namespace gxf

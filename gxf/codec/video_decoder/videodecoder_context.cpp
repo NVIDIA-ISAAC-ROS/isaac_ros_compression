@@ -15,6 +15,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <algorithm>
+#include <string>
 #include "videodecoder_context.hpp"
 #include "videodecoder_utils.hpp"
 
@@ -32,7 +34,14 @@ gxf_result_t VideoDecoderContext::registerInterface(gxf::Registrar* registrar) {
   gxf::Expected<void> result;
 
   result &= registrar->parameter(response_scheduling_term_, "async_scheduling_term",
-      "Asynchronous Scheduling Term", "Asynchronous Scheduling Term");
+                                 "Asynchronous Scheduling Term", "Asynchronous Scheduling Term");
+
+  result &= registrar->parameter(device_id_, "device_id", "cuda device id",
+                                 "valid device id range is 0 to (cudaGetDeviceCount() - 1)", 0);
+
+  result &= registrar->parameter(max_bitstream_size_, "max_bitstream_size",
+                                 "Max input frame size to use",
+                                 "Default size is 2 MB", 2097152u);
 
   return gxf::ToResultCode(result);
 }
@@ -57,6 +66,7 @@ static void* decoder_thread_func(void* args) {
   while (!ctx->resolution_change_event) {
     if (ctx->eos) {
       GXF_LOG_DEBUG("eos is set without start of decode \n");
+      ctx->error_in_decode_thread = 1;
       return NULL;
     }
     memset(&event, 0, sizeof(struct v4l2_event));
@@ -83,6 +93,7 @@ static void* decoder_thread_func(void* args) {
   while (!ctx->capture_format_set) {
     if (ctx->eos) {
       GXF_LOG_DEBUG("eos is set without start of decode \n");
+      ctx->error_in_decode_thread = 1;
       return NULL;
     }
     retval = get_fmt_capture_plane(ctx, &capture_format);
@@ -285,6 +296,8 @@ static void* decoder_thread_func(void* args) {
 }
 
 gxf_result_t VideoDecoderContext::initialize() {
+  bool isWSL = isWSLPlatform();
+
   ctx_ = new nvmpictx;
   if (ctx_ == nullptr) {
     GXF_LOG_ERROR("Failed to allocate memory for decoder Context");
@@ -294,6 +307,7 @@ gxf_result_t VideoDecoderContext::initialize() {
 
   ctx_->response_scheduling_term = response_scheduling_term_.get();
   ctx_->response_scheduling_term->setEventState(nvidia::gxf::AsynchronousEventState::WAIT);
+  ctx_->device_id = device_id_;
 
   int32_t retval = 0;
   ctx_->eos = 0;
@@ -302,23 +316,38 @@ gxf_result_t VideoDecoderContext::initialize() {
   ctx_->resolution_change_event = 0;
   ctx_->dst_dma_fd = -1;
   ctx_->error_in_decode_thread = 0;
+  ctx_->capture_format_set = 0;
 
-  retval = system("lsmod | grep 'nvgpu' > /dev/null");
-  if (retval == -1) {
-    GXF_LOG_ERROR("Error in grep for nvgpu device");
+  int32_t device_count;
+  cudaDeviceProp prop;
+  cudaError_t status;
+
+  status = cudaGetDeviceCount(&device_count);
+  if (status != cudaSuccess) {
+    GXF_LOG_ERROR("cudaGetDevice failed");
     return GXF_FAILURE;
-  } else if (retval == 0) {
-      ctx_->is_cuvid = false;
-  } else {
-      ctx_->is_cuvid = true;
   }
+  if (ctx_->device_id >= device_count) {
+    GXF_LOG_ERROR("invalid cuda device id set");
+    return GXF_FAILURE;
+  }
+  status = cudaGetDeviceProperties(&prop, ctx_->device_id);
+  if (status != cudaSuccess) {
+      GXF_LOG_ERROR("cudaGetDeviceProperties failed");
+      return GXF_FAILURE;
+  }
+  ctx_->is_cuvid = !prop.integrated;
 
   /* The call creates a new V4L2 Video Encoder object
    on the device node.
+   device_ = ""/dev/null"  for WSL platform
    device_ = "/dev/nvidia0" for cuvid (for single GPU system).
    device_ = "/dev/v4l2-nvdec" for tegra
   */
-  if (ctx_->is_cuvid) {
+  if (isWSL) {
+    GXF_LOG_INFO("WSL Platform, device name :%s", "/dev/null");
+    ctx_->dev_fd = v4l2_open("/dev/null", 0);
+  } else if (ctx_->is_cuvid) {
     /* For multi GPU systems, device = "/dev/nvidiaX",
      where X < number of GPUs in the system.
      Find the device node(X) in the system by searching for /dev/nvidia*
@@ -347,6 +376,9 @@ gxf_result_t VideoDecoderContext::initialize() {
     return GXF_FAILURE;
   }
 
+  ctx_->max_bitstream_size = max_bitstream_size_;
+  GXF_LOG_DEBUG("Max input frame size: %d \n", ctx_->max_bitstream_size);
+
   // For the decoder, let's call S_FMT h264 pixelformat on the output plane
   // and then subscribe for events etc.. and the usual stuff.
   retval = set_output_plane_format(ctx_);
@@ -366,7 +398,7 @@ gxf_result_t VideoDecoderContext::initialize() {
   if (ctx_->is_cuvid) {
     retval = set_cuda_gpu_id(ctx_);
     if (retval < 0) {
-      GXF_LOG_ERROR("Error in subscribe events \n");
+      GXF_LOG_ERROR("Error in set cuda device id \n");
       return GXF_FAILURE;
     }
   }
@@ -401,16 +433,20 @@ gxf_result_t VideoDecoderContext::deinitialize() {
     }
   }
 
-  retval = streamoff_plane(ctx_, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
-  if (retval < 0) {
-    GXF_LOG_ERROR("Error in Stream off for OUTPUT_MPLANE \n");
-    return GXF_FAILURE;
-  }
+  // Call streamoff only when capture_format is set. It is not set
+  // for un-supported streams.
+  if (ctx_->capture_format_set) {
+    retval = streamoff_plane(ctx_, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+    if (retval < 0) {
+      GXF_LOG_ERROR("Error in Stream off for OUTPUT_MPLANE \n");
+      return GXF_FAILURE;
+    }
 
-  retval = streamoff_plane(ctx_, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
-  if (retval < 0) {
-    GXF_LOG_ERROR("Error in Stream off for CAPTURE_MPLANE \n");
-    return GXF_FAILURE;
+    retval = streamoff_plane(ctx_, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+    if (retval < 0) {
+      GXF_LOG_ERROR("Error in Stream off for CAPTURE_MPLANE \n");
+      return GXF_FAILURE;
+    }
   }
 
   if (ctx_->dst_dma_fd != -1) {
@@ -432,13 +468,29 @@ gxf_result_t VideoDecoderContext::deinitialize() {
     ctx_->dst_dma_fd = -1;
   }
 
-  v4l2_close(ctx_->dev_fd);
+  if (!ctx_->error_in_decode_thread)
+    v4l2_close(ctx_->dev_fd);
 
   delete ctx_;
   return GXF_SUCCESS;
 }
 
+bool VideoDecoderContext::isWSLPlatform() {
+  GXF_LOG_DEBUG("Entering in isWSLPlatform function");
+
+  std::ifstream file("/proc/version");
+  std::string line;
+  bool found = false;
+
+  if (file.is_open()) {
+    std::getline(file, line);
+    std::transform(line.begin(), line.end(), line.begin(), ::tolower);
+    found = (line.find("microsoft") != std::string::npos);
+    file.close();
+  }
+
+  return found;
+}
 
 }  // namespace gxf
 }  // namespace nvidia
-

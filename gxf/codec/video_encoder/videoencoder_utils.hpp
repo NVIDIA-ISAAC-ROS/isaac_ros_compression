@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
-
 #ifndef NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEOENCODER_UTILS_HPP_
 #define NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEOENCODER_UTILS_HPP_
 
@@ -85,6 +84,7 @@ int getMetadata(nvmpictx* ctx, uint32_t buffer_index,
                 v4l2_ctrl_videoenc_outputbuf_metadata & enc_metadata);
 int setConstantQP(nvmpictx* ctx, uint32_t IinitQP, uint32_t PinitQP,
                uint32_t BinitQP);
+int32_t set_cuda_gpu_id(nvmpictx* ctx);
 }  // namespace gxf
 }  // namespace nvidia
 #endif  // NVIDIA_GXF_MULTIMEDIA_EXTENSIONS_VIDEOENCODER_UTILS_HPP_

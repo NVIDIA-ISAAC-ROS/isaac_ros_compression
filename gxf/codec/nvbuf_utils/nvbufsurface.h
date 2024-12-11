@@ -37,6 +37,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#ifdef  __ANDROID__
+#include <cutils/native_handle.h>
+#endif
 
 #ifdef __cplusplus
 extern "C"
@@ -285,6 +288,16 @@ typedef enum
   NVBUF_COLOR_FORMAT_NV12_12LE_709,
   /** Specifies BT.709 colorspace - Y/CbCr ER 4:2:0 12-bit multi-planar. */
   NVBUF_COLOR_FORMAT_NV12_12LE_709_ER,
+  /** Specifies 8 bit GRAY scale ER - single plane */
+  NVBUF_COLOR_FORMAT_GRAY8_ER,
+  /** Specifies BT.709 colorspace - Y/CbCr 4:2:2 planar */
+  NVBUF_COLOR_FORMAT_UYVY_709,
+  /** Specifies BT.709 colorspace - Y/CbCr ER 4:2:2 planar */
+  NVBUF_COLOR_FORMAT_UYVY_709_ER,
+  /** Specifies BT.2020 colorspace - Y/CbCr 4:2:2 planar */
+  NVBUF_COLOR_FORMAT_UYVY_2020,
+  /** Specifies 16 bit GRAY scale - single plane */
+  NVBUF_COLOR_FORMAT_GRAY16_LE,
   NVBUF_COLOR_FORMAT_LAST
 } NvBufSurfaceColorFormat;
 
@@ -348,8 +361,9 @@ typedef struct NvBufSurfacePlaneParamsEx
   uint32_t physicaladdress[NVBUF_MAX_PLANES];
   /** flags associated with planes */
   uint64_t flags[NVBUF_MAX_PLANES];
-
-  void * _reserved[STRUCTURE_PADDING * NVBUF_MAX_PLANES];
+  /** DRM modifier for plane */
+  uint64_t drmModifier[NVBUF_MAX_PLANES];
+  void * _reserved[(STRUCTURE_PADDING - 1) * NVBUF_MAX_PLANES];
 } NvBufSurfacePlaneParamsEx;
 
 /**
@@ -378,6 +392,10 @@ typedef struct NvBufSurfacePlaneParams
 
 /**
   * Holds Chroma Subsampling parameters for NvBufSurface allocation.
+  * The members chromaLocHoriz and chromaLocVert accept these values:
+  * 0: Left horizontal or top vertical position
+  * 1: Center horizontal or center vertical position
+  * 2: Right horizontal or bottom vertical position
   */
 typedef struct NvBufSurfaceChromaSubsamplingParams
 {
@@ -706,7 +724,7 @@ int NvBufSurfaceCopy (NvBufSurface *srcSurf, NvBufSurface *dstSurf);
  * This function can be used to copy plane memory content from source raw buffer pointer
  * to specific destination batch buffer of supported memory type.
  *
- * @param[in] surf pointer to NvBufSurface structure.
+ * @param[in] Surf pointer to NvBufSurface structure.
  * @param[in] index index of buffer in the batch.
  * @param[in] plane index of plane in buffer.
  * @param[in] out_width aligned width of the raw data plane.
@@ -715,7 +733,7 @@ int NvBufSurfaceCopy (NvBufSurface *srcSurf, NvBufSurface *dstSurf);
  *
  * @return 0 for success, -1 for failure.
  */
-int NvBufSurface2Raw (NvBufSurface *Surf, unsigned int index, unsigned int plane, unsigned int outwidth, unsigned int outheight, unsigned char *ptr);
+int NvBufSurface2Raw (NvBufSurface *Surf, unsigned int index, unsigned int plane, unsigned int out_width, unsigned int out_height, unsigned char *ptr);
 
 /**
  * \brief Copies the raw buffer plane memory content to the NvBufSurface plane memory of a specific
@@ -729,11 +747,11 @@ int NvBufSurface2Raw (NvBufSurface *Surf, unsigned int index, unsigned int plane
  * @param[in] plane index of plane in buffer.
  * @param[in] in_width aligned width of the raw data plane.
  * @param[in] in_height aligned height of the raw data plane.
- * @param[in] surf pointer to NvBufSurface structure.
+ * @param[in] Surf pointer to NvBufSurface structure.
  *
  * @return 0 for success, -1 for failure.
  */
-int Raw2NvBufSurface (unsigned char *ptr, unsigned int index, unsigned int plane, unsigned int inwidth, unsigned int inheight, NvBufSurface *Surf);
+int Raw2NvBufSurface (unsigned char *ptr, unsigned int index, unsigned int plane, unsigned int in_width, unsigned int in_height, NvBufSurface *Surf);
 
 /**
  * Syncs the HW memory cache for the CPU.
@@ -855,6 +873,30 @@ int NvBufSurfaceImport (NvBufSurface **out_nvbuf_surf, const NvBufSurfaceMapPara
  *
  * @return 0 for success, -1 for failure.
  */
+
+#ifdef __ANDROID__
+/**
+ * Extracts the BufferID from android native buffer handle. Returns the buffer ID for the surface.
+ *
+ * @param[out]  out_buf_id     Returns the Output unique Buffer ID.
+ * @param[in]   handle         Android native buffer handle.
+ *
+ * @returns 0 for success, -1 for failure
+ */
+int NvBufSurfaceGetBufferId(uint64_t *out_buf_id, buffer_handle_t *handle);
+/**
+ * Extracts the surface from android native buffer handle. Returns the DMA buffer FD for the surface.
+ * Fills the extended parameters which are extracted from surface.
+ *
+ * @param[out]  out_dmabuf_fd  Returns the Output hardware DMABUF FD.
+ * @param[in]   handle         Android native buffer handle.
+ * @param[out]  exparams       A pointer to the structure to fill with extended parameters.
+ *
+ * @returns 0 for success, -1 for failure
+ */
+int NvBufSurfaceImportGraphicBufferFd(int *out_dmabuf_fd, buffer_handle_t *handle, NvBufSurfaceMapParams *exparams);
+#endif
+
 int NvBufSurfaceGetMapParams (const NvBufSurface *surf, int index, NvBufSurfaceMapParams *params);
 
 /** @} */

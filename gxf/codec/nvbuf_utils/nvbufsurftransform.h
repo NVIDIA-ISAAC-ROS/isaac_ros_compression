@@ -32,6 +32,11 @@
 extern "C" {
 #endif
 
+/**
+ * Defines the maximum number of sync objects.
+ */
+#define NVBUFSURF_MAX_SYNCOBJ 5
+
 typedef struct CUstream_st* cudaStream_t; //!< Forward declaration of cudaStream_t.
 
 /** @defgroup ds_bbb NvBufSurfTransform Types and Functions
@@ -382,7 +387,7 @@ NvBufSurfTransform_Error NvBufSurfTransformComposite (NvBufSurface *src,
  *                  may include any combination of scaling, format conversion,
  *                  and cropping for both source and destination.
  *                  Flipping and rotation are supported on VIC/GPU.
- * @param[out] sync_objs
+ * @param[out] sync_obj
  *                  A pointer to an \ref NvBufSurfTransformSyncObj structure
  *                  which holds synchronization information of the current
  *                  transform call. \ref NvBufSurfTransfromSyncObjWait() API to be
@@ -415,7 +420,7 @@ NvBufSurfTransform_Error NvBufSurfTransformAsync (NvBufSurface *src,
  *                  structure which specifies the compositing operation to be
  *                  performed, e.g., the source and destination rectangles
  *                  in \a src and \a dst.
- * @param[out] sync_objs
+ * @param[out] sync_obj
  *                  A pointer to an \ref NvBufSurfTransformSyncObj structure
  *                  which holds synchronization information of the current
  *                  composite call. ref\ NvBufSurfTransfromSyncObjWait() API to be
@@ -496,7 +501,7 @@ NvBufSurfTransform_Error NvBufSurfTransformMultiInputBufCompositeBlend (NvBufSur
  * @param[in] src pointer (multiple buffer) to input batched(batch size=1) buffers to be transformed.
  * @param[out] dst pointer (single buffer) where composited output would be stored.
  * @param[in] composite_blend_params pointer to NvBufSurfTransformCompositeParams structure.
- * @param[out] sync_objs
+ * @param[out] sync_obj
  *                  A pointer to an \ref NvBufSurfTransformSyncObj structure
  *                  which holds synchronization information of the current
  *                  composite call. ref\ NvBufSurfTransfromSyncObjWait() API to be
@@ -515,7 +520,7 @@ NvBufSurfTransform_Error NvBufSurfTransformMultiInputBufCompositeBlendAsync (NvB
 
 
 /**
- * \brief  Wait on the synchroization object.
+ * \brief  Wait on the synchronization object.
  *
  * The API waits on the synchronization object to finish the corresponding
  * processing of transform/composite calls or returns on time_out
@@ -531,7 +536,7 @@ NvBufSurfTransformSyncObj_t sync_obj, uint32_t time_out);
 
 
 /**
- * \brief  Destroy the synchroization object.
+ * \brief  Destroy the synchronization object.
  *
  * The API deletes the sync_obj which was used for previous transform/composite
  * Asynchronous calls
@@ -543,6 +548,23 @@ NvBufSurfTransformSyncObj_t sync_obj, uint32_t time_out);
 NvBufSurfTransform_Error NvBufSurfTransformSyncObjDestroy(
     NvBufSurfTransformSyncObj_t* sync_obj);
 
+/**
+ * \brief  Get the synchronization object from sync point FD.
+ *
+ * The API gets the corresponding synchronization object from sync point FD.
+ * It currently assumes one synchronization object for one file descriptor as
+ * all the transform APIs supports single synchronization object only.
+ *
+ * @param[in]   file              sync point file descriptor.
+ * @param[out]  sync_obj          A pointer to an \ref NvBufSurfTransformSyncObj_t which is a pointer
+ *                                to an array of \ref NvBufSurfTransformSyncObj allocated in the function
+ *                                having size (num_sync_objs * sizeof(NvBufSurfTransformSyncObj))
+ *                                which holds synchronization information corresponding to FD.
+ * @param[out]  num_sync_objs     number of sync objects.
+ * @return An \ref NvBufSurfTransform_Error value indicating success or failure.
+ */
+NvBufSurfTransform_Error NvBufSurfTransformSyncObjFromFile(
+    int file, NvBufSurfTransformSyncObj_t* sync_obj, unsigned int *num_sync_objs);
 
 /**
  * \brief Sets the default transform session as the current session for all upcoming transforms.

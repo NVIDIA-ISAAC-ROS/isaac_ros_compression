@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
-
 #include <string>
 
 #include "gxf/core/component.hpp"
@@ -678,6 +677,31 @@ int getMetadata(nvmpictx* ctx, uint32_t buffer_index,
 
   ret = getExtControls(ctx, &ctrls);
   return ret;
+}
+
+int32_t set_cuda_gpu_id(nvmpictx* ctx) {
+  int32_t ret = 0;
+
+  struct v4l2_ext_control control;
+  struct v4l2_ext_controls ctrls;
+
+  memset(&control, 0, sizeof(control));
+  memset(&ctrls, 0, sizeof(ctrls));
+
+  ctrls.count = 1;
+  ctrls.controls = &control;
+  ctrls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+
+  control.id = V4L2_CID_MPEG_VIDEO_CUDA_GPU_ID;
+  control.value = ctx->device_id;
+
+  GXF_LOG_DEBUG("Setting gpu id");
+
+  ret = v4l2_ioctl(ctx->dev_fd, VIDIOC_S_EXT_CTRLS, &ctrls);
+  if (ret < 0)
+    return -1;
+
+  return 0;
 }
 
 }  // namespace gxf

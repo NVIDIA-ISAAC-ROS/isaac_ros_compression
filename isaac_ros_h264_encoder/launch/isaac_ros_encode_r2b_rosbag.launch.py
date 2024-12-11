@@ -54,7 +54,7 @@ def generate_launch_description():
         parameters=[{
             'input_width': 1920,
             'input_height': 1200,
-            'config': 'iframe',
+            'config': 'iframe_cqp',
         }],
         remappings=[
             ('image_raw', 'hawk_0_right_rgb_image'),

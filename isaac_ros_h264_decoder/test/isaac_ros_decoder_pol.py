@@ -86,7 +86,7 @@ class IsaacROSDecoderTest(IsaacROSBaseTest):
                 if 'image_uncompressed' in received_messages:
                     done = True
                     break
-            if(VISUALIZE):
+            if VISUALIZE:
                 image_uncompressed_msg = received_messages['image_uncompressed']
                 cv_img = cv_bridge.CvBridge().imgmsg_to_cv2(image_uncompressed_msg,
                                                             desired_encoding='bgr8')

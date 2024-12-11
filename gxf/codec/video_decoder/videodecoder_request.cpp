@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
-
 #include <string>
 #include "gxf/multimedia/camera.hpp"
 #include "gxf/std/timestamp.hpp"
@@ -297,9 +296,9 @@ gxf_result_t VideoDecoderRequest::tick() {
       }
     }
 
-    if (n_video_bytes > max_bitstream_size) {
+    if (n_video_bytes > impl_->ctx->max_bitstream_size) {
       GXF_LOG_ERROR("Input bitstream size is large. Size: %d max_buffer_size: %d \n",
-                    n_video_bytes, max_bitstream_size);
+                    n_video_bytes, impl_->ctx->max_bitstream_size);
       return GXF_FAILURE;
     }
 

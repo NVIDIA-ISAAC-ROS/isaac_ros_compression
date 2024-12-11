@@ -78,9 +78,21 @@ gxf_result_t VideoDecoderResponse::start() {
 gxf_result_t VideoDecoderResponse::tick() {
   GXF_LOG_DEBUG("VideoDecoderResponse:Tick started");
 
-  // Get output message
-  auto output_entity = impl_->ctx->output_entity_queue.front();
-  impl_->ctx->output_entity_queue.pop();
+  uint64_t output_timestamp;
+  uint64_t dqbuf_timestamp =
+    impl_->ctx->output_timestamp.tv_sec * static_cast<uint64_t>(1e6) +
+    impl_->ctx->output_timestamp.tv_usec;
+
+  gxf::Entity output_entity;
+  // Get output message that matches with dqbuf timestamp
+  do {
+    output_entity = impl_->ctx->output_entity_queue.front();
+    impl_->ctx->output_entity_queue.pop();
+
+    auto message_timestamp =
+    output_entity.get<nvidia::gxf::Timestamp>(kTimestampName);
+    output_timestamp = message_timestamp.value()->acqtime;
+  } while ((output_timestamp > 0) && (output_timestamp < dqbuf_timestamp));
 
   auto output_video_buffer = output_entity.get<nvidia::gxf::VideoBuffer>();
   if (!output_video_buffer) {
@@ -95,14 +107,6 @@ gxf_result_t VideoDecoderResponse::tick() {
     GXF_LOG_ERROR("Error in copying output YUV");
     return GXF_FAILURE;
   }
-
-  // Add timestamp into output message
-  uint64_t input_timestamp =
-    impl_->ctx->output_timestamp.tv_sec * static_cast<uint64_t>(1e6) +
-    impl_->ctx->output_timestamp.tv_usec;
-  auto out_timestamp =
-    output_entity.add<nvidia::gxf::Timestamp>(kTimestampName);
-  out_timestamp.value()->acqtime = input_timestamp;
 
   // enqueue it back
   if (enqueue_plane_buffer(impl_->ctx, impl_->ctx->cp_dqbuf_index, 0,

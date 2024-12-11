@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
-
 #include <string>
 
 #include "videoencoder_response.hpp"
