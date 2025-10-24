@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2016-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2016-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -908,8 +908,10 @@ struct v4l2_ctrl_vp8_frame_hdr {
 /**
  * Defines the Control ID to specify the encoder slice intra refresh interval.
  *
- * A pointer to a valid \c v4l2_enc_slice_intrarefresh_param structure must be
- * supplied with this control.
+ * A pointer to a valid
+ * \c v4l2_enc_slice_intrarefresh_param structure for non-CUDA usecase and
+ * \c v4l2_ctrl_intra_refresh structure for CUDA usecase
+ * must be supplied with the control.
  *
  * @attention This control must be set after setting formats on both the planes
  * and before requesting buffers on either plane.
@@ -987,6 +989,11 @@ struct v4l2_ctrl_vp8_frame_hdr {
  *
  * A pointer to valid #v4l2_enc_hw_preset_type_param structure must
  * be supplied with this control.
+ *
+ * For CUDA usecases, tuning info is set to NV_ENC_TUNING_INFO_LOW_LATENCY.
+ * It is recommended not to change the tuning info if \c v4l2_enc_hw_preset_type
+ * definitions are used. If more control is needed for presets and tuning info,
+ * use #V4L2_CID_MPEG_VIDEOENC_CUDA_PRESET_ID and #V4L2_CID_MPEG_VIDEOENC_CUDA_TUNING_INFO.
  *
  * @attention This control must be set after setting formats on both the planes
  * and before requesting buffers on either plane.
@@ -1506,6 +1513,17 @@ struct v4l2_ctrl_vp8_frame_hdr {
 #define V4L2_CID_MPEG_VIDEOENC_INTRA_REFRESH (V4L2_CID_MPEG_BASE+590)
 
 /**
+ * Defines the Control ID to disable SAO filter for HEVC.
+ *
+ * A boolean value should be supplied with this control.
+ * If value is true, SAO filter for H265 encoding is disabled. Enabled by default
+ *
+ * @attention This control should be set after setting formats on both the planes
+ * and before requesting buffers on either plane.
+ **/
+#define V4L2_CID_MPEG_VIDEOENC_H265_DISABLE_SAO (V4L2_CID_MPEG_BASE + 592)
+
+/** 
  * Defines the Control ID to enable/disable Error Resilient Mode for AV1.
  *
  * A boolean value should be supplied with this control.
@@ -1514,7 +1532,7 @@ struct v4l2_ctrl_vp8_frame_hdr {
  * @attention This control should be set after setting formats on both the planes
  * and before requesting buffers on either plane.
  **/
-#define V4L2_CID_MPEG_VIDEOENC_AV1_ERR_RESILIENT_MODE (V4L2_CID_MPEG_BASE + 592)
+#define V4L2_CID_MPEG_VIDEOENC_AV1_ERR_RESILIENT_MODE (V4L2_CID_MPEG_BASE + 593)
 
 /** Defines Control ID to enable FrameId Present flag for AV1
  *
@@ -1523,7 +1541,7 @@ struct v4l2_ctrl_vp8_frame_hdr {
  * @attention This control must be set after setting formats on both the planes
  * and before requesting buffers on either plane.
  */
-#define V4L2_CID_MPEG_VIDEOENC_AV1_ENABLE_FRAMEID_NUMBERS (V4L2_CID_MPEG_BASE + 593)
+#define V4L2_CID_MPEG_VIDEOENC_AV1_ENABLE_FRAMEID_NUMBERS (V4L2_CID_MPEG_BASE + 594)
 
 /** Defines Control ID to enable Tile groups for AV1
  *
@@ -1533,6 +1551,14 @@ struct v4l2_ctrl_vp8_frame_hdr {
  * and before requesting buffers on either plane.
  */
 #define V4L2_CID_MPEG_VIDEOENC_AV1_ENABLE_TILE_GROUPS (V4L2_CID_MPEG_BASE + 598)
+
+/** Defines Control ID to flush output plane buffers of cuvid decoder
+ *
+ * A boolean value must be supplied with this control. Default is 0
+ *
+ * @attention This control must be set once we receive flush event
+ */
+#define V4L2_CID_MPEG_VIDEODEC_FLUSH_BUFFERS (V4L2_CID_MPEG_BASE + 599)
 
 /** @} */
 
@@ -2080,6 +2106,12 @@ enum v4l2_enc_slice_length_type
     V4L2_ENC_SLICE_LENGTH_TYPE_BITS = 0,
     /** Slice size is specified in terms of number of macroblocks. */
     V4L2_ENC_SLICE_LENGTH_TYPE_MBLK,
+    /** Applicable for CUDA only*/
+    /** Slice data specifies # of MB rows in each slice (except last slice). */
+    V4L2_ENC_SLICE_LENGTH_TYPE_MB_ROW,
+    /** Slice data specifies number of slices in the picture. Divided by encoder optimally */
+    V4L2_ENC_SLICE_LENGTH_TYPE_NUM_SLICES,
+    V4L2_ENC_SLICE_LENGTH_FORCE32 = 0x7FFFFFFF
 };
 
 /**
@@ -2698,8 +2730,12 @@ typedef struct _v4l2_ctrl_video_qp_range
 
 typedef struct _v4l2_ctrl_intra_refresh
 {
+    /** Enabled intra refresh */
     __u32 enableIntraRefresh;
+    /** Specifies the interval between successive intra refresh. */
     __u32 intraRefreshPeriod;
+    /** Specifies the length of intra refresh in number of frames for periodic intra refresh.
+     * Must be smaller than IDR interval. */
     __u32 intraRefreshCnt;
     /** Reserved fields are added for extensibility. */
     __u32 reserved[4];

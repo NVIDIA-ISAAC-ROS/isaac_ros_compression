@@ -1,6 +1,6 @@
 %YAML 1.2
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -114,12 +114,22 @@ components:
     storage_type: 0
     block_size: 6912000
     num_blocks: 40
+- name: stream_pool
+  type: nvidia::gxf::CudaStreamPool
+  parameters:
+    dev_id: 0
+    stream_flags: 1
+    stream_priority: 0
+    reserved_size: 1
+    max_size: 1
+    nvtx_identifier: "nitros_encoder_node_stream_pool"
 - type: nvidia::gxf::VideoEncoderResponse
   parameters:
     videoencoder_context: global/encoder_context
     output_transmitter: output
     outbuf_storage_type: 0
     pool: pool
+    stream_pool: stream_pool
 - name: async_st
   type: nvidia::gxf::AsynchronousSchedulingTerm
 - type: nvidia::gxf::MemoryAvailableSchedulingTerm

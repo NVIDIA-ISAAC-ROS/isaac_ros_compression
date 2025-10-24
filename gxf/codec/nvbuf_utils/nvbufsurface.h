@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2019-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,9 +37,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#ifdef  __ANDROID__
-#include <cutils/native_handle.h>
-#endif
 
 #ifdef __cplusplus
 extern "C"
@@ -298,6 +295,8 @@ typedef enum
   NVBUF_COLOR_FORMAT_UYVY_2020,
   /** Specifies 16 bit GRAY scale - single plane */
   NVBUF_COLOR_FORMAT_GRAY16_LE,
+  /** Specifies 64 bit BGRA (B16 G16 R16 A16) interleaved */
+  NVBUF_COLOR_FORMAT_BGRA64_LE,
   NVBUF_COLOR_FORMAT_LAST
 } NvBufSurfaceColorFormat;
 
@@ -462,8 +461,12 @@ typedef struct NvBufSurfaceMappedAddr {
   void * addr[NVBUF_MAX_PLANES];
   /** Holds a pointer to a mapped EGLImage. */
   void *eglImage;
+  /** Holds a pointer to a mapped NVRM memory */
+  void *nvmmPtr;
+  /** Holds a pointer to a mapped CUDA memory */
+  void *cudaPtr;
 
-  void * _reserved[STRUCTURE_PADDING];
+  void * _reserved[STRUCTURE_PADDING - 2];
 } NvBufSurfaceMappedAddr;
 
 /**
@@ -538,8 +541,10 @@ typedef struct NvBufSurface {
   NvBufSurfaceMemType memType;
   /** Holds a pointer to an array of batched buffers. */
   NvBufSurfaceParams *surfaceList;
+  /** Holds a flag for Imported buffer. */
+  bool isImportedBuf;
 
-  void * _reserved[STRUCTURE_PADDING];
+  void * _reserved[STRUCTURE_PADDING - 1];
 } NvBufSurface;
 
 /**
@@ -568,6 +573,23 @@ typedef struct NvBufSurfaceMapPlaneParams
 } NvBufSurfaceMapPlaneParams;
 
 /**
+ * CUDA IPC memory handle for NvBufSurface
+ */
+typedef struct NvBufSurfaceCudaIpcMemHandle_t
+{
+  char reserved[64];
+} NvBufSurfaceCudaIpcMemHandle;
+
+/**
+ * The extended map parameters NvBufSurface
+ */
+typedef struct NvBufSurfaceExtendedMapParams_t
+{
+  NvBufSurfaceCudaIpcMemHandle memHandle;
+  void *reserved[64];
+} NvBufSurfaceExtendedMapParams;
+
+/**
  * Holds buffer parameters to map the buffer received from another process.
  */
 typedef struct NvBufSurfaceMapParams {
@@ -591,9 +613,35 @@ typedef struct NvBufSurfaceMapParams {
   NvBufSurfaceChromaSubsamplingParams chromaSubsampling;
   /** Holds plane parameters */
   NvBufSurfaceMapPlaneParams planes[NVBUF_MAX_PLANES];
+  /** Holds the extended Map parameters */
+  void *extendedMapParams;
+  /** Reserved */
+  uint8_t reserved[56];
+} NvBufSurfaceMapParams;
+
+/**
+ * Holds information about mapped CUDA buffer
+ */
+typedef struct NvBufSurfaceCudaBuffer {
+  /** Holds a pointer to mapped CUDA memory */
+  void *dataPtr;
+  /** Holds a pointer to external CUDA memory */
+  void *extMem;
   /** Reserved */
   uint8_t reserved[64];
-} NvBufSurfaceMapParams;
+} NvBufSurfaceCudaBuffer;
+
+/**
+ * Holds information about mapped CUDA buffer
+ */
+typedef struct NvBufSurfaceNvmmBuffer {
+  /** Holds a pointer to mapped nvmm memory */
+  void *dataPtr;
+  /** Holds a DMABUF FD */
+  uint64_t bufferDesc;
+  /** Reserved */
+  uint8_t reserved[64];
+} NvBufSurfaceNvmmBuffer;
 
 /**
  * \brief  Allocates a batch of buffers.
@@ -873,31 +921,83 @@ int NvBufSurfaceImport (NvBufSurface **out_nvbuf_surf, const NvBufSurfaceMapPara
  *
  * @return 0 for success, -1 for failure.
  */
-
-#ifdef __ANDROID__
-/**
- * Extracts the BufferID from android native buffer handle. Returns the buffer ID for the surface.
- *
- * @param[out]  out_buf_id     Returns the Output unique Buffer ID.
- * @param[in]   handle         Android native buffer handle.
- *
- * @returns 0 for success, -1 for failure
- */
-int NvBufSurfaceGetBufferId(uint64_t *out_buf_id, buffer_handle_t *handle);
-/**
- * Extracts the surface from android native buffer handle. Returns the DMA buffer FD for the surface.
- * Fills the extended parameters which are extracted from surface.
- *
- * @param[out]  out_dmabuf_fd  Returns the Output hardware DMABUF FD.
- * @param[in]   handle         Android native buffer handle.
- * @param[out]  exparams       A pointer to the structure to fill with extended parameters.
- *
- * @returns 0 for success, -1 for failure
- */
-int NvBufSurfaceImportGraphicBufferFd(int *out_dmabuf_fd, buffer_handle_t *handle, NvBufSurfaceMapParams *exparams);
-#endif
-
 int NvBufSurfaceGetMapParams (const NvBufSurface *surf, int index, NvBufSurfaceMapParams *params);
+
+/**
+ * \brief  Creates an CUDA buffer from the memory of one or more
+ * \ref NvBufSurface buffers.
+ *
+ * Only memory type \ref NVBUF_MEM_SURFACE_ARRAY is supported.
+ *
+ * This function returns the created CUDA buffer by storing its address at
+ * \a surf->surfaceList->mappedAddr->cudaPtr. (\a surf is a pointer to
+ * an NvBufSurface. \a surfaceList is a pointer to an \ref NvBufSurfaceParams.
+ * \a mappedAddr is a pointer to an \ref NvBufSurfaceMappedAddr.
+ * \a cudaPtr is a pointer to an \ref NvBufSurfaceCudaBuffer.
+ *
+ * You can use this function in scenarios where a CUDA operation on Jetson
+ * hardware memory (identified by \ref NVBUF_MEM_SURFACE_ARRAY) is required.
+ * The NvBufSurfaceCudaBuffer struct provided by this function can be used
+ * to get dataPtr of CUDA memory.
+ *
+ * @param[in,out] surf  A pointer to an NvBufSurface structure. The function
+ *                      stores a pointer to the created CUDA buffer in
+ *                      a descendant of this structure; see the notes above.
+ * @param[in]     index Index of a buffer in the batch. -1 specifies all buffers
+ *                      in the batch.
+ *
+ * @return 0 for success, or -1 otherwise.
+ */
+int NvBufSurfaceMapCudaBuffer (NvBufSurface *surf, int index);
+
+/**
+ * \brief  Destroys the previously created CUDA buffer.
+ *
+ * @param[in] surf      A pointer to an \ref NvBufSurface structure.
+ * @param[in] index     The index of a buffer in the batch. -1 specifies all
+ *                      buffers in the batch.
+ *
+ * @return 0 if successful, or -1 otherwise.
+ */
+int NvBufSurfaceUnMapCudaBuffer (NvBufSurface *surf, int index);
+
+/**
+ * \brief  Creates an NVMM buffer from the memory of one or more
+ * \ref NvBufSurface buffers.
+ *
+ * Only memory type \ref NVBUF_MEM_CUDA_DEVICE and \ref NVBUF_MEM_CUDA_PINNED
+ * are supported.
+ *
+ * This function returns the created NVMM buffer by storing its address at
+ * \a surf->surfaceList->mappedAddr->nvmmPtr. (\a surf is a pointer to
+ * an NvBufSurface. \a surfaceList is a pointer to an \ref NvBufSurfaceParams.
+ * \a mappedAddr is a pointer to an \ref NvBufSurfaceMappedAddr.
+ * \a nvmmPtr is a pointer to NVMM buffer of memory type \ref NVBUF_MEM_SURFACE_ARRAY.
+ *
+ * You can use this function in scenarios where a NVBUF_MEM_SURFACE_ARRAY operation
+ * on Jetson hardware memory identified by \ref NVBUF_MEM_CUDA_DEVICE and
+ * \ref NVBUF_MEM_CUDA_PINNED are required.
+ *
+ * @param[in,out] surf  A pointer to an NvBufSurface structure. The function
+ *                      stores a pointer to the created NVMM buffer in
+ *                      a descendant of this structure; see the notes above.
+ * @param[in]     index Index of a buffer in the batch. -1 specifies all buffers
+ *                      in the batch.
+ *
+ * @return 0 for success, or -1 otherwise.
+ */
+int NvBufSurfaceMapNvmmBuffer (NvBufSurface *surf, int index);
+
+/**
+ * \brief  Destroys the previously created NVMM buffer.
+ *
+ * @param[in] surf      A pointer to an \ref NvBufSurface structure.
+ * @param[in] index     The index of a buffer in the batch. -1 specifies all
+ *                      buffers in the batch.
+ *
+ * @return 0 if successful, or -1 otherwise.
+ */
+int NvBufSurfaceUnMapNvmmBuffer (NvBufSurface *surf, int index);
 
 /** @} */
 

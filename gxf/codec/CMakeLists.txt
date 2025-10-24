@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -94,6 +94,7 @@ target_link_libraries(gxf_video_encoder_extension
   nvbuf_fdmap
   nvbufsurftransform
   isaac_ros_gxf::Core
+  isaac_ros_gxf::Cuda
   isaac_ros_gxf::Std
   isaac_ros_gxf::Multimedia
 )
@@ -109,5 +110,6 @@ target_link_libraries(gxf_video_decoder_extension
   nvbufsurftransform
   isaac_ros_gxf::Core
   isaac_ros_gxf::Std
+  isaac_ros_gxf::Cuda
   isaac_ros_gxf::Multimedia
 )
