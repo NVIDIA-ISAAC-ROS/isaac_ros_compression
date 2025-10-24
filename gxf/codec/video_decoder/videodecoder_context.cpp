@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -333,10 +333,22 @@ gxf_result_t VideoDecoderContext::initialize() {
   }
   status = cudaGetDeviceProperties(&prop, ctx_->device_id);
   if (status != cudaSuccess) {
-      GXF_LOG_ERROR("cudaGetDeviceProperties failed");
-      return GXF_FAILURE;
+    GXF_LOG_ERROR("cudaGetDeviceProperties failed");
+    return GXF_FAILURE;
   }
-  ctx_->is_cuvid = !prop.integrated;
+
+  /* cuvid driver is used for video decode when
+     GPU device is not integrated.
+     Tegra device is Thor or next.
+  */
+  ctx_->is_cuvid = 0;
+  if (!prop.integrated) {
+    ctx_->is_cuvid = 1;
+  } else {
+    if (prop.major >= CUDA_DEVPROP_MAJOR_THOR) {
+      ctx_->is_cuvid = 1;
+    }
+  }
 
   /* The call creates a new V4L2 Video Encoder object
    on the device node.
@@ -494,3 +506,4 @@ bool VideoDecoderContext::isWSLPlatform() {
 
 }  // namespace gxf
 }  // namespace nvidia
+

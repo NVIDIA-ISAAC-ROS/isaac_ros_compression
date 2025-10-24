@@ -1,6 +1,6 @@
 %YAML 1.2
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,15 @@ components:
   parameters:
     receiver: input_image
     min_size: 1
+- name: stream_pool
+  type: nvidia::gxf::CudaStreamPool
+  parameters:
+    dev_id: 0
+    stream_flags: 1
+    stream_priority: 0
+    reserved_size: 1
+    max_size: 1
+    nvtx_identifier: "nitros_decoder_node_stream_pool"
 - name: decoder_request
   type: nvidia::gxf::VideoDecoderRequest
   parameters:
@@ -33,6 +42,7 @@ components:
     videodecoder_context: global/decoder_context
     async_scheduling_term: decoder_response/async_st
     inbuf_storage_type: 0
+    stream_pool: stream_pool
 ---
 name: decoder_response
 components:
@@ -154,6 +164,7 @@ components:
     stop_on_deadlock: false
     check_recession_period_ms: 1
     worker_thread_number: 2
+    worker_thread_name_id: "nitros_decoder_node"
 - type: nvidia::gxf::JobStatistics
   parameters:
     clock: clock
