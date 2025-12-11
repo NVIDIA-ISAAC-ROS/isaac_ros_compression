@@ -748,24 +748,23 @@ gxf_result_t VideoEncoderRequest::setEncoderParameters() {
       CHECK_ENCODER_ERROR(setBitrate(impl_->ctx, impl_->ctx->bitrate),
                           "Failed to set encoder bitrate")
     }
-
-    CHECK_ENCODER_ERROR(setIDRInterval(impl_->ctx, impl_->ctx->idr_interval),
-                        "Failed to set IDR interval")
-
-    CHECK_ENCODER_ERROR(setIFrameInterval(impl_->ctx, impl_->ctx->iframe_interval),
-                        "Failed to set IFrame Interval")
-
-    CHECK_ENCODER_ERROR(setNumBFrames(impl_->ctx, impl_->ctx->num_of_bframes),
-                        "Failed to set number of B Frames")
-
-    CHECK_ENCODER_ERROR(setInsertSpsPpsAtIdrEnabled(impl_->ctx, true),
-                        "Failed to set encoder SPSPPS at IDR")
-
-    CHECK_ENCODER_ERROR(setMaxPerfMode(impl_->ctx, true),
-                        "Failed to set Max performance mode")
-
-    CHECK_ENCODER_ERROR(insertVUI(impl_->ctx, true), "Failed to Insert VUI")
   }
+  CHECK_ENCODER_ERROR(setIDRInterval(impl_->ctx, impl_->ctx->idr_interval),
+                      "Failed to set IDR interval")
+
+  CHECK_ENCODER_ERROR(setIFrameInterval(impl_->ctx, impl_->ctx->iframe_interval),
+                      "Failed to set IFrame Interval")
+
+  CHECK_ENCODER_ERROR(setNumBFrames(impl_->ctx, impl_->ctx->num_of_bframes),
+                      "Failed to set number of B Frames")
+
+  CHECK_ENCODER_ERROR(setInsertSpsPpsAtIdrEnabled(impl_->ctx, true),
+                      "Failed to set encoder SPSPPS at IDR")
+
+  CHECK_ENCODER_ERROR(setMaxPerfMode(impl_->ctx, true),
+                      "Failed to set Max performance mode")
+
+  CHECK_ENCODER_ERROR(insertVUI(impl_->ctx, true), "Failed to Insert VUI")
   return GXF_SUCCESS;
 }
 
