@@ -25,6 +25,7 @@ from isaac_ros_test import IsaacROSBaseTest, JSONConversion
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
+import launch_testing
 import pytest
 import rclpy
 
@@ -33,49 +34,64 @@ from sensor_msgs.msg import CompressedImage, Image
 HEIGHT = 460
 WIDTH = 460
 SAVE_H264 = False
-UNSUPPORTED_COMPUTE_CAPS = ['8.0', '9.0']
+UNSUPPORTED_COMPUTE_CAPS = ['8.0', '9.0', '10.0', '10.3']
 
 
 @pytest.mark.rostest
 def generate_test_description():
-    encoder_node = ComposableNode(
-        name='encoder',
-        package='isaac_ros_h264_encoder',
-        plugin='nvidia::isaac_ros::h264_encoder::EncoderNode',
-        namespace=IsaacROSEncoderTest.generate_namespace(),
-        parameters=[{
-                'input_height': HEIGHT,
-                'input_width': WIDTH,
-                'config': 'pframe_cqp'
-        }])
+    nvenc_available = True
+    logger = rclpy.logging.get_logger('isaac_ros_h264_encoder_pol')
+    if platform.machine() == 'x86_64':
+        nvidia_smi_cmd = 'nvidia-smi --query-gpu=compute_cap --format=csv'
+        compute_caps = os.popen(nvidia_smi_cmd).read().strip().split('\n')
+        logger.info(f'Compute caps: {compute_caps}')
+        if len(compute_caps) <= 1:
+            nvenc_available = False
+        else:
+            for cap in compute_caps[1:]:
+                if cap in UNSUPPORTED_COMPUTE_CAPS:
+                    nvenc_available = False
+                    break
+    else:
+        logger.info(f'Test running on {platform.machine()}, continuing...')
 
-    container = ComposableNodeContainer(
-        name='encoder_container',
-        namespace='',
-        package='rclcpp_components',
-        executable='component_container',
-        composable_node_descriptions=[encoder_node],
-        output='screen',
-        arguments=['--ros-args', '--log-level', 'info']
-    )
-    return IsaacROSEncoderTest.generate_test_description([container])
+    if not nvenc_available:
+        IsaacROSEncoderTest.skip_test = True
+        return IsaacROSEncoderTest.generate_test_description(
+            [launch_testing.actions.ReadyToTest()])
+    else:
+        IsaacROSEncoderTest.skip_test = False
+
+        encoder_node = ComposableNode(
+            name='encoder',
+            package='isaac_ros_h264_encoder',
+            plugin='nvidia::isaac_ros::h264_encoder::EncoderNode',
+            namespace=IsaacROSEncoderTest.generate_namespace(),
+            parameters=[{
+                    'input_height': HEIGHT,
+                    'input_width': WIDTH,
+                    'config': 'pframe_cqp'
+            }])
+
+        container = ComposableNodeContainer(
+            name='encoder_container',
+            namespace='',
+            package='rclcpp_components',
+            executable='component_container',
+            composable_node_descriptions=[encoder_node],
+            output='screen',
+            arguments=['--ros-args', '--log-level', 'info']
+        )
+        return IsaacROSEncoderTest.generate_test_description([container])
 
 
 class IsaacROSEncoderTest(IsaacROSBaseTest):
     filepath = pathlib.Path(os.path.dirname(__file__))
+    skip_test = False
 
     @IsaacROSBaseTest.for_each_test_case()
     def test_image_encoder(self, test_folder):
-        # Check if nvenc is available for x86 platform
-        nvenc_available = True
-        if (platform.machine()) == 'x86_64':
-            nvidia_smi_cmd = 'nvidia-smi --query-gpu=compute_cap --format=csv'
-            compute_caps = os.popen(nvidia_smi_cmd).read().strip().split('\n')
-            for cap in compute_caps[1:]:
-                if (cap in UNSUPPORTED_COMPUTE_CAPS):
-                    nvenc_available = True
-                    break
-        if (not nvenc_available):
+        if self.skip_test:
             self.skipTest('No NVENC engine available for existing GPUs.')
 
         TIMEOUT = 10
