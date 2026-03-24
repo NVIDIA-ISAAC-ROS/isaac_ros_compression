@@ -20,6 +20,7 @@ project(gxf_codec_extension LANGUAGES C CXX)
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-fPIC -w)
 endif()
+
 find_package(yaml-cpp)
 
 ament_auto_add_library(gxf_video_encoder_extension SHARED
@@ -114,3 +115,26 @@ target_link_libraries(gxf_video_decoder_extension
   isaac_ros_gxf::Cuda
   isaac_ros_gxf::Multimedia
 )
+
+# Ensure NVIDIA multimedia libraries can be resolved in non-login runtimes on FastOS.
+if( ${ARCHITECTURE} STREQUAL "aarch64" )
+  set(NV_CODEC_RPATH "/usr/lib/aarch64-linux-gnu/nvidia:/opt/deepstream_tegra/lib")
+
+  set_target_properties(gxf_video_encoder_extension PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    BUILD_RPATH_USE_ORIGIN TRUE
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    INSTALL_RPATH "${NV_CODEC_RPATH}"
+  )
+
+  set_target_properties(gxf_video_decoder_extension PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    BUILD_RPATH_USE_ORIGIN TRUE
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    INSTALL_RPATH "${NV_CODEC_RPATH}"
+  )
+
+  # Use DT_RPATH so transitive dependencies also honor this path at runtime.
+  target_link_options(gxf_video_encoder_extension PRIVATE "-Wl,--disable-new-dtags")
+  target_link_options(gxf_video_decoder_extension PRIVATE "-Wl,--disable-new-dtags")
+endif()
