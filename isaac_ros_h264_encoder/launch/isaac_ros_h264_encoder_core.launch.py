@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,18 +27,22 @@ class IsaacROSStereoH264EncoderLaunchFragment(IsaacROSLaunchFragment):
 
     @staticmethod
     def get_composable_nodes(interface_specs: Dict[str, Any]) -> Dict[str, ComposableNode]:
+        width = interface_specs['camera_resolution']['width']
+        height = interface_specs['camera_resolution']['height']
+
         return {
             'left_encoder_node': ComposableNode(
                 package='isaac_ros_h264_encoder',
                 plugin='nvidia::isaac_ros::h264_encoder::EncoderNode',
                 name='left_encoder_node',
                 parameters=[{
-                    'input_width': interface_specs['camera_resolution']['width'],
-                    'input_height': interface_specs['camera_resolution']['height'],
+                    'input_width': width,
+                    'input_height': height,
                 }],
                 remappings=[
                     ('image_raw', 'left/image_rect'),
-                    ('image_compressed', 'left/image_compressed')]
+                    ('image_compressed', 'left/image_compressed'),
+                ]
             ),
 
             'right_encoder_node': ComposableNode(
@@ -46,13 +50,14 @@ class IsaacROSStereoH264EncoderLaunchFragment(IsaacROSLaunchFragment):
                 plugin='nvidia::isaac_ros::h264_encoder::EncoderNode',
                 name='right_encoder_node',
                 parameters=[{
-                    'input_width': interface_specs['camera_resolution']['width'],
-                    'input_height': interface_specs['camera_resolution']['height'],
+                    'input_width': width,
+                    'input_height': height,
                 }],
                 remappings=[
                     ('image_raw', 'right/image_rect'),
-                    ('image_compressed', 'right/image_compressed')]
-            )
+                    ('image_compressed', 'right/image_compressed'),
+                ]
+            ),
         }
 
 
@@ -62,11 +67,12 @@ def generate_launch_description():
         name='encoder_container',
         namespace='',
         executable='component_container_mt',
-        composable_node_descriptions=IsaacROSStereoH264EncoderLaunchFragment
-        .get_composable_nodes().values(),
+        composable_node_descriptions=list(
+            IsaacROSStereoH264EncoderLaunchFragment.get_composable_nodes({
+                'camera_resolution': {'width': 1920, 'height': 1200}
+            }).values()
+        ),
         output='screen'
     )
 
-    return launch.LaunchDescription(
-        [encoder_container] +
-        IsaacROSStereoH264EncoderLaunchFragment.get_launch_actions().values())
+    return launch.LaunchDescription([encoder_container])

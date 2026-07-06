@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ def generate_launch_description():
         }],
         remappings=[
             ('image_raw', 'hawk_0_left_rgb_image'),
-            ('image_compressed', 'hawk_0_left_h264_image')
+            ('image_compressed', 'hawk_0_left_h264_image'),
         ]
     )
 
@@ -58,28 +58,29 @@ def generate_launch_description():
         }],
         remappings=[
             ('image_raw', 'hawk_0_right_rgb_image'),
-            ('image_compressed', 'hawk_0_right_h264_image')
+            ('image_compressed', 'hawk_0_right_h264_image'),
         ]
     )
 
     rosbag_play = ExecuteProcess(
-        cmd=['ros2', 'bag', 'play', rosbag_path],
+        cmd=['ros2', 'bag', 'play', '--loop', rosbag_path],
         output='screen')
 
-    rosbag_record = ExecuteProcess(
-        cmd=['ros2', 'bag',
-             'record', '/hawk_0_left_h264_image', '/hawk_0_right_h264_image',
-             '-o', 'r2b_compressed_image'],
-        output='screen')
+    # Record command (commented out - uncomment to enable recording)
+    # ros2 bag record /hawk_0_left_h264_image /hawk_0_right_h264_image \
+    #   -o r2b_compressed_image
 
     container = ComposableNodeContainer(
         name='encoder_container',
         namespace='',
         package='rclcpp_components',
         executable='component_container',
-        composable_node_descriptions=[left_encoder_node, right_encoder_node],
+        composable_node_descriptions=[
+            left_encoder_node,
+            right_encoder_node,
+        ],
         output='screen',
         arguments=['--ros-args', '--log-level', 'info']
     )
 
-    return (launch.LaunchDescription(launch_args + [rosbag_record, rosbag_play, container]))
+    return (launch.LaunchDescription(launch_args + [rosbag_play, container]))
