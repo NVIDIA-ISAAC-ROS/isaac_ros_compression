@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,11 +22,60 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+execute_process(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE)
+message(STATUS "Architecture: ${ARCHITECTURE}")
+
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-# DecoderNode
-ament_auto_add_library(decoder_node SHARED src/decoder_node.cpp)
+find_package(CUDAToolkit REQUIRED)
+find_package(vpi REQUIRED)
+
+# V4L2 and NvBuf libraries for decoder
+add_library(nvbuf_fdmap SHARED IMPORTED)
+add_library(nvbufsurface SHARED IMPORTED)
+add_library(nvbufsurftransform SHARED IMPORTED)
+add_library(nvv4l2 SHARED IMPORTED)
+add_library(cuvidv4l2 SHARED IMPORTED)
+
+if(${ARCHITECTURE} STREQUAL "x86_64")
+  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbuf_fdmap.so)
+  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurface.so)
+  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvv4l2.so)
+  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libcuvidv4l2.so)
+elseif(${ARCHITECTURE} STREQUAL "aarch64")
+  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbuf_fdmap.so.1.0.0)
+  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurface.so)
+  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvv4l2.so)
+  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvcuvidv4l2.so)
+endif()
+
+# DecoderNode (GXF-free implementation)
+ament_auto_add_library(decoder_node SHARED
+  src/decoder_node.cpp
+  src/decoder_v4l2_impl.cpp
+  src/decoder_v4l2_utils.cpp
+)
+
+target_include_directories(decoder_node PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../codec
+  ${CMAKE_CURRENT_SOURCE_DIR}/../codec/nvbuf_utils
+  ${CMAKE_CURRENT_SOURCE_DIR}/../codec/libv4l2/include
+)
+
+target_link_libraries(decoder_node
+  CUDA::cuda_driver
+  CUDA::cudart
+  vpi
+  cuvidv4l2
+  nvv4l2
+  nvbufsurface
+  nvbuf_fdmap
+  nvbufsurftransform
+)
+
 rclcpp_components_register_nodes(decoder_node "nvidia::isaac_ros::h264_decoder::DecoderNode")
 set(node_plugins "${node_plugins}nvidia::isaac_ros::h264_decoder::DecoderNode;$<TARGET_FILE:decoder_node>\n")
 set_target_properties(decoder_node PROPERTIES
@@ -34,18 +83,17 @@ set_target_properties(decoder_node PROPERTIES
   BUILD_RPATH_USE_ORIGIN TRUE
   INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-### Install extensions built from source
+# Ensure NVIDIA multimedia libraries can be resolved in non-login runtimes on FastOS (DGX Spark).
+if(${ARCHITECTURE} STREQUAL "aarch64")
+  set(NV_CODEC_RPATH "/usr/lib/aarch64-linux-gnu/nvidia:/opt/deepstream_tegra/lib")
+  set_target_properties(decoder_node PROPERTIES INSTALL_RPATH "${NV_CODEC_RPATH}")
+  target_link_options(decoder_node PRIVATE "-Wl,--disable-new-dtags")
+endif()
 
-# Codec
-add_subdirectory(gxf/codec)
-install(TARGETS gxf_video_decoder_extension DESTINATION share/${PROJECT_NAME}/gxf/lib/codec)
-
-### End extensions
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
-
 
   # The FindPythonInterp and FindPythonLibs modules are removed
   if(POLICY CMP0148)
@@ -56,10 +104,9 @@ if(BUILD_TESTING)
   add_launch_test(test/isaac_ros_decoder_pol.py)
 endif()
 
-
 # Embed versioning information into installed files
 ament_index_get_resource(ISAAC_ROS_COMMON_CMAKE_PATH isaac_ros_common_cmake_path isaac_ros_common)
 include("${ISAAC_ROS_COMMON_CMAKE_PATH}/isaac_ros_common-version-info.cmake")
 generate_version_info(${PROJECT_NAME})
 
-ament_auto_package(INSTALL_TO_SHARE config launch)
+ament_auto_package(INSTALL_TO_SHARE launch)
