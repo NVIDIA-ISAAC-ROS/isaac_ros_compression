@@ -62,21 +62,28 @@ add_library(cuvidv4l2 SHARED IMPORTED)
 # unversioned symlink exists alongside it could not be verified here, so `-l:` is
 # not assumed to resolve. Applying the same treatment there would be worthwhile if
 # you can confirm the layout.
+# NVBUF_LIB_DIR can be overridden to build against an NVDEC installation outside
+# the distribution default, which packagers on non-FHS layouts need.
 if(${ARCHITECTURE} STREQUAL "x86_64")
-  set(NVBUF_LIB_DIR /usr/lib/x86_64-linux-gnu)
+  if(NOT NVBUF_LIB_DIR)
+    set(NVBUF_LIB_DIR /usr/lib/x86_64-linux-gnu)
+  endif()
   set(NVBUF_LINK_LIBS
     -l:libnvbufsurface.so
     -l:libnvbuf_fdmap.so
     -l:libnvbufsurftransform.so)
-  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvv4l2.so)
-  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libcuvidv4l2.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvv4l2.so)
+  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libcuvidv4l2.so)
 elseif(${ARCHITECTURE} STREQUAL "aarch64")
+  if(NOT NVBUF_LIB_DIR)
+    set(NVBUF_LIB_DIR /usr/lib/aarch64-linux-gnu/nvidia)
+  endif()
   set(NVBUF_LINK_LIBS nvbufsurface nvbuf_fdmap nvbufsurftransform)
-  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbuf_fdmap.so.1.0.0)
-  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurface.so)
-  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurftransform.so)
-  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvv4l2.so)
-  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvcuvidv4l2.so)
+  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvbuf_fdmap.so.1.0.0)
+  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvbufsurface.so)
+  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvv4l2.so)
+  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvcuvidv4l2.so)
 endif()
 
 # DecoderNode (GXF-free implementation)
