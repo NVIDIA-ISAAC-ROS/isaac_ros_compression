@@ -38,18 +38,52 @@ add_library(nvbufsurftransform SHARED IMPORTED)
 add_library(nvv4l2 SHARED IMPORTED)
 add_library(cuvidv4l2 SHARED IMPORTED)
 
+# libnvbuf_fdmap, libnvbufsurface and libnvbufsurftransform ship without a
+# DT_SONAME. When a shared library has no soname the linker records whatever path
+# it was handed, so linking them by absolute IMPORTED_LOCATION bakes absolute
+# paths into decoder_node's DT_NEEDED entries:
+#
+#   $ readelf -d libdecoder_node.so | grep NEEDED
+#     /usr/lib/x86_64-linux-gnu/libnvbufsurface.so
+#     /usr/lib/x86_64-linux-gnu/libnvbuf_fdmap.so
+#     /usr/lib/x86_64-linux-gnu/libnvbufsurftransform.so
+#
+# decoder_node then loads only when those libraries sit at exactly that path, and
+# an absolute DT_NEEDED cannot be redirected by RPATH, RUNPATH or LD_LIBRARY_PATH,
+# which makes the node unusable from any relocated prefix.
+#
+# Linking them by name against a search directory records a plain DT_NEEDED
+# instead, so the normal search order applies. NVBUF_LINK_LIBS below selects that
+# form on x86_64. libnvv4l2.so is unaffected either way: it carries a soname of
+# its own (libv4l2.so.0) and already resolves correctly.
+#
+# The aarch64 branch is deliberately left on the original absolute-path form. The
+# Jetson nvbuf_fdmap is versioned (libnvbuf_fdmap.so.1.0.0) and whether an
+# unversioned symlink exists alongside it could not be verified here, so `-l:` is
+# not assumed to resolve. Applying the same treatment there would be worthwhile if
+# you can confirm the layout.
+# NVBUF_LIB_DIR can be overridden to build against an NVDEC installation outside
+# the distribution default, which packagers on non-FHS layouts need.
 if(${ARCHITECTURE} STREQUAL "x86_64")
-  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbuf_fdmap.so)
-  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurface.so)
-  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurftransform.so)
-  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvv4l2.so)
-  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libcuvidv4l2.so)
+  if(NOT NVBUF_LIB_DIR)
+    set(NVBUF_LIB_DIR /usr/lib/x86_64-linux-gnu)
+  endif()
+  set(NVBUF_LINK_LIBS
+    -l:libnvbufsurface.so
+    -l:libnvbuf_fdmap.so
+    -l:libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvv4l2.so)
+  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libcuvidv4l2.so)
 elseif(${ARCHITECTURE} STREQUAL "aarch64")
-  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbuf_fdmap.so.1.0.0)
-  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurface.so)
-  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurftransform.so)
-  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvv4l2.so)
-  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvcuvidv4l2.so)
+  if(NOT NVBUF_LIB_DIR)
+    set(NVBUF_LIB_DIR /usr/lib/aarch64-linux-gnu/nvidia)
+  endif()
+  set(NVBUF_LINK_LIBS nvbufsurface nvbuf_fdmap nvbufsurftransform)
+  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvbuf_fdmap.so.1.0.0)
+  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvbufsurface.so)
+  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvv4l2.so)
+  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION ${NVBUF_LIB_DIR}/libnvcuvidv4l2.so)
 endif()
 
 # DecoderNode (GXF-free implementation)
@@ -65,15 +99,16 @@ target_include_directories(decoder_node PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../codec/libv4l2/include
 )
 
+if(DEFINED NVBUF_LIB_DIR)
+  target_link_directories(decoder_node PRIVATE ${NVBUF_LIB_DIR})
+endif()
 target_link_libraries(decoder_node
   CUDA::cuda_driver
   CUDA::cudart
   vpi
   cuvidv4l2
   nvv4l2
-  nvbufsurface
-  nvbuf_fdmap
-  nvbufsurftransform
+  ${NVBUF_LINK_LIBS}
 )
 
 rclcpp_components_register_nodes(decoder_node "nvidia::isaac_ros::h264_decoder::DecoderNode")
