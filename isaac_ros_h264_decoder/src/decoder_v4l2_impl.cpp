@@ -433,14 +433,29 @@ void decoder_thread_func(V4L2DecoderImpl * ctx)
     dst_nvbuf->numFilled = 1;
     ctx->dst_dma_fd = dst_nvbuf->surfaceList[0].bufferDesc;
 
-    // For Tegra: Map NVBUF_MEM_SURFACE_ARRAY to CUDA buffer for GPU access
-    // This populates dst_nvbuf->surfaceList[0].mappedAddr.cudaPtr
-    retval = NvBufSurfaceMapCudaBuffer(dst_nvbuf, 0);
-    if (retval) {
-      RCLCPP_ERROR(rclcpp::get_logger("V4L2Decoder"),
-        "[V4L2Decoder] NvBufSurfaceMapCudaBuffer for destination buffer failed");
-      ctx->error_in_decode_thread = true;
-      return;
+    // For Tegra (nvgpu): map each plane to CPU memory and register with CUDA so the
+    // GPU can access the decoded NV12 buffer via cudaHostGetDevicePointer.
+    for (uint32_t plane = 0;
+      plane < dst_nvbuf->surfaceList[0].planeParams.num_planes; plane++)
+    {
+      retval = NvBufSurfaceMap(dst_nvbuf, 0, plane, NVBUF_MAP_READ_WRITE);
+      if (retval) {
+        RCLCPP_ERROR(rclcpp::get_logger("V4L2Decoder"),
+          "[V4L2Decoder] NvBufSurfaceMap for plane %u failed", plane);
+        ctx->error_in_decode_thread = true;
+        return;
+      }
+      cudaError_t cuda_err = cudaHostRegister(
+        dst_nvbuf->surfaceList[0].mappedAddr.addr[plane],
+        dst_nvbuf->surfaceList[0].planeParams.psize[plane],
+        cudaHostRegisterDefault);
+      if (cuda_err != cudaSuccess) {
+        RCLCPP_ERROR(rclcpp::get_logger("V4L2Decoder"),
+          "[V4L2Decoder] cudaHostRegister for plane %u failed: %s",
+          plane, cudaGetErrorString(cuda_err));
+        ctx->error_in_decode_thread = true;
+        return;
+      }
     }
   }
 
@@ -574,18 +589,36 @@ void decoder_thread_func(V4L2DecoderImpl * ctx)
         frame.uv_offset = frame.y_pitch * ctx->video_height;
       }
     } else {
-      // For Tegra, we mapped NVBUF_MEM_SURFACE_ARRAY to CUDA buffer via NvBufSurfaceMapCudaBuffer.
-      // The cudaPtr field contains an NvBufSurfaceCudaBuffer struct with dataPtr.
-      NvBufSurfaceCudaBuffer * cuda_buf = reinterpret_cast<NvBufSurfaceCudaBuffer *>(
-        src_buf->surfaceList[0].mappedAddr.cudaPtr);
-      if (cuda_buf && cuda_buf->dataPtr) {
-        frame.device_ptr = reinterpret_cast<uint8_t *>(cuda_buf->dataPtr);
-      } else {
+      // For Tegra (nvgpu): each plane was mapped via NvBufSurfaceMap + cudaHostRegister.
+      // Get the device pointer for each plane separately — the plane mappings
+      // are not guaranteed to be contiguous in virtual memory, so the consumer
+      // must use uv_device_ptr rather than device_ptr + uv_offset.
+      uint8_t * y_dev_ptr = nullptr;
+      uint8_t * uv_dev_ptr = nullptr;
+      cudaError_t cuda_err = cudaHostGetDevicePointer(
+        reinterpret_cast<void **>(&y_dev_ptr),
+        src_buf->surfaceList[0].mappedAddr.addr[0], 0);
+      if (cuda_err != cudaSuccess) {
         RCLCPP_ERROR(rclcpp::get_logger("V4L2Decoder"),
-          "[V4L2Decoder] Tegra CUDA buffer mapping not available");
+          "[V4L2Decoder] cudaHostGetDevicePointer Y failed: %s",
+          cudaGetErrorString(cuda_err));
         ctx->cp_dqbuf_available = false;
         continue;
       }
+      if (plane_params.num_planes > 1) {
+        cuda_err = cudaHostGetDevicePointer(
+          reinterpret_cast<void **>(&uv_dev_ptr),
+          src_buf->surfaceList[0].mappedAddr.addr[1], 0);
+        if (cuda_err != cudaSuccess) {
+          RCLCPP_ERROR(rclcpp::get_logger("V4L2Decoder"),
+            "[V4L2Decoder] cudaHostGetDevicePointer UV failed: %s",
+            cudaGetErrorString(cuda_err));
+          ctx->cp_dqbuf_available = false;
+          continue;
+        }
+      }
+      frame.device_ptr = y_dev_ptr;
+      frame.uv_device_ptr = uv_dev_ptr;
       frame.y_pitch = plane_params.pitch[0];
       frame.uv_pitch = (plane_params.pitch[1] > 0) ? plane_params.pitch[1] : frame.y_pitch;
       if (plane_params.offset[1] > 0) {
@@ -791,8 +824,13 @@ void V4L2Decoder::shutdown()
   if (impl_->dst_dma_fd >= 0) {
     NvBufSurface * dst_buf = nullptr;
     NvBufSurfaceFromFd(impl_->dst_dma_fd, reinterpret_cast<void **>(&dst_buf));
-    // Unmap the CUDA buffer mapping we created with NvBufSurfaceMapCudaBuffer
-    NvBufSurfaceUnMapCudaBuffer(dst_buf, 0);
+    if (dst_buf && dst_buf->surfaceList) {
+      for (uint32_t plane = 0;
+        plane < dst_buf->surfaceList[0].planeParams.num_planes; plane++)
+      {
+        NvBufSurfaceUnMap(dst_buf, 0, plane);
+      }
+    }
     NvBufSurfaceDestroy(dst_buf);
     impl_->dst_dma_fd = -1;
   }

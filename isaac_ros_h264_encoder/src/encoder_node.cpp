@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ EncoderNode::EncoderNode(const rclcpp::NodeOptions & options)
   input_width_(declare_parameter<int32_t>("input_width", 1920)),
   input_height_(declare_parameter<int32_t>("input_height", 1200)),
   qp_(declare_parameter<int32_t>("qp", 20)),
-  hw_preset_type_(declare_parameter<int32_t>("hw_preset_type", 0)),
+  hw_preset_type_(declare_parameter<int32_t>("hw_preset_type", 1)),
   profile_(declare_parameter<int32_t>("profile", 0)),
   iframe_interval_(declare_parameter<int32_t>("iframe_interval", 5)),
   idr_interval_(declare_parameter<int32_t>("idr_interval", 5)),
@@ -130,7 +130,7 @@ bool EncoderNode::initialize_encoder(uint32_t width, uint32_t height)
     enc_config.iframe_interval = 1;
     enc_config.idr_interval = 1;
     enc_config.profile = 1;  // Main profile
-    enc_config.hw_preset_type = 0;  // ULTRAFAST
+    enc_config.hw_preset_type = 1;
     enc_config.entropy = 0;  // CAVLC
     RCLCPP_INFO(get_logger(),
       "[EncoderNode] Using iframe_cqp preset: qp=20, iframe_interval=1");
@@ -141,7 +141,7 @@ bool EncoderNode::initialize_encoder(uint32_t width, uint32_t height)
     enc_config.iframe_interval = 5;
     enc_config.idr_interval = 5;
     enc_config.profile = 1;  // Main profile
-    enc_config.hw_preset_type = 0;  // ULTRAFAST
+    enc_config.hw_preset_type = 1;
     enc_config.entropy = 0;  // CAVLC
     RCLCPP_INFO(get_logger(),
       "[EncoderNode] Using pframe_cqp preset: qp=20, iframe_interval=5");
@@ -177,7 +177,7 @@ bool EncoderNode::initialize_encoder(uint32_t width, uint32_t height)
   }
 
   RCLCPP_INFO(
-    get_logger(), "[EncoderNode] H264 Encoder initialized: %ux%u (accepts RGB8 or NV12)",
+    get_logger(), "[EncoderNode] H264 Encoder initialized: %ux%u (accepts RGB8, NV12, or Mono8)",
     width, height);
   return true;
 }
@@ -193,6 +193,9 @@ EncoderNode::~EncoderNode()
   }
   if (nv12_staging_ptr_) {
     cudaFree(nv12_staging_ptr_);
+  }
+  if (mono8_uv_staging_ptr_) {
+    cudaFree(mono8_uv_staging_ptr_);
   }
 
   output_pool_.destroy();
@@ -232,6 +235,8 @@ void EncoderNode::image_callback(nitros::NitrosImage::SharedPtr msg)
 
   if (msg->encoding == "nv12") {
     encode_nv12(*msg);
+  } else if (msg->encoding == "mono8" || msg->encoding == "8UC1") {
+    encode_mono8(*msg);
   } else {
     convert_and_encode(*msg);
   }
@@ -265,6 +270,79 @@ void EncoderNode::encode_nv12(const nitros::NitrosImage & msg)
   {
     RCLCPP_ERROR(get_logger(), "[EncoderNode] Failed to encode frame");
   }
+}
+
+// mono8 (grayscale, e.g. RealSense infrared streams) maps directly onto the
+// NV12 luma plane, so no color-space conversion is needed: the input buffer is
+// fed straight in as Y and a constant neutral-chroma (UV = 128) plane is
+// synthesized once and reused. This is the inverse of the NV12->MONO8 Y-plane
+// copy used by isaac_ros_image_proc's ImageFormatConverterNode.
+void EncoderNode::encode_mono8(const nitros::NitrosImage & msg)
+{
+  auto read_handle = msg.get_read_handle(input_stream_);
+  const uint8_t * input_ptr = read_handle.get_ptr();
+  if (!input_ptr) {
+    RCLCPP_ERROR(get_logger(), "[EncoderNode] Input image buffer pointer is null");
+    return;
+  }
+
+  if (!encoder_) {
+    RCLCPP_ERROR(get_logger(), "[EncoderNode] Encoder not initialized");
+    return;
+  }
+
+  // encode_frame reads the UV plane sized to the encoder's CONFIGURED
+  // resolution (cudaMemcpy2DAsync of config.width x config.height/2), which may
+  // differ from this message if the encoder was initialized on an earlier frame
+  // of a different size. Size the staging buffer to the encoder's resolution to
+  // avoid an over-read, and reallocate if that resolution changes.
+  const EncoderConfig & enc_config = encoder_->config();
+  size_t uv_size = static_cast<size_t>(enc_config.width) * (enc_config.height / 2);
+  if (!ensure_mono8_uv_staging(uv_size)) {
+    return;
+  }
+
+  uint64_t timestamp_ns = static_cast<uint64_t>(msg.timestamp_sec) * 1000000000ULL +
+    msg.timestamp_nsec;
+
+  // UV staging is a tightly packed neutral-chroma plane at the encoder's width,
+  // so its row stride equals the configured width.
+  if (!encoder_->encode_frame(
+      input_ptr, mono8_uv_staging_ptr_, msg.step, enc_config.width,
+      timestamp_ns, msg.frame_id, input_stream_))
+  {
+    RCLCPP_ERROR(get_logger(), "[EncoderNode] Failed to encode frame");
+  }
+}
+
+bool EncoderNode::ensure_mono8_uv_staging(size_t uv_size)
+{
+  if (mono8_uv_staging_ptr_ && uv_size == mono8_uv_staging_size_) {
+    return true;
+  }
+  if (mono8_uv_staging_ptr_) {
+    cudaFree(mono8_uv_staging_ptr_);
+    mono8_uv_staging_ptr_ = nullptr;
+    mono8_uv_staging_size_ = 0;
+  }
+  cudaError_t err = cudaMalloc(&mono8_uv_staging_ptr_, uv_size);
+  if (err != cudaSuccess) {
+    RCLCPP_ERROR(get_logger(),
+      "[EncoderNode] cudaMalloc for mono8 UV staging failed: %s", cudaGetErrorString(err));
+    mono8_uv_staging_ptr_ = nullptr;
+    return false;
+  }
+  // 0x80 = neutral chroma; renders the luma-only stream as true grayscale.
+  err = cudaMemset(mono8_uv_staging_ptr_, 0x80, uv_size);
+  if (err != cudaSuccess) {
+    RCLCPP_ERROR(get_logger(),
+      "[EncoderNode] cudaMemset for mono8 UV staging failed: %s", cudaGetErrorString(err));
+    cudaFree(mono8_uv_staging_ptr_);
+    mono8_uv_staging_ptr_ = nullptr;
+    return false;
+  }
+  mono8_uv_staging_size_ = uv_size;
+  return true;
 }
 
 // DEPRECATED: RGB8->NV12 conversion for backward compatibility.
@@ -326,8 +404,11 @@ void EncoderNode::convert_and_encode(const nitros::NitrosImage & msg)
 
 void EncoderNode::on_encoded_frame(EncodedFrame && frame)
 {
-  // Get size from appropriate source (device_ptr path vs host data path)
-  size_t size = frame.device_ptr ? frame.size : frame.data.size();
+  // Pick the active source of bytes (dGPU device pointer, Tegra host pointer,
+  // or legacy host-vector fallback).
+  size_t size = (frame.device_ptr != nullptr || frame.host_ptr != nullptr) ?
+    frame.size :
+    frame.data.size();
 
   // Validate encoded frame size against static pool capacity
   if (size > output_pool_.block_size()) {
@@ -347,12 +428,18 @@ void EncoderNode::on_encoded_frame(EncodedFrame && frame)
 
   cudaError_t err;
   if (frame.device_ptr) {
-    // Both dGPU and Tegra: D2D copy from V4L2 capture buffer (device) to output (device)
-    // - dGPU: dataPtr is CUDA device memory
-    // - Tegra: NvBufSurfaceMapCudaBuffer provides CUDA-accessible pointer
+    // dGPU path: dataPtr on the V4L2 capture buffer is already CUDA device
+    // memory, so a single D2D copy moves the bitstream to the output buffer.
     err = cudaMemcpyAsync(
       write_handle.get_ptr(), frame.device_ptr, size,
       cudaMemcpyDeviceToDevice, output_stream_);
+  } else if (frame.host_ptr) {
+    // Tegra (nvgpu) path: the NVENC bitstream buffer is CPU-mapped. Issue
+    // a synchronous cudaMemcpy to the output buffer. This blocks until the copy is done,
+    // so the V4L2 capture buffer is safe to re-enqueue when this callback returns.
+    err = cudaMemcpy(
+      write_handle.get_ptr(), frame.host_ptr, size,
+      cudaMemcpyHostToDevice);
   } else {
     // Fallback: H2D copy from host vector to output (device)
     // This path should not be hit in normal operation.

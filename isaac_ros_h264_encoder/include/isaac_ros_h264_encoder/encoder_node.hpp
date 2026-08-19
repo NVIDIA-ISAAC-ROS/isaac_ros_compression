@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,13 @@ private:
 
   void image_callback(nitros::NitrosImage::SharedPtr msg);
   void encode_nv12(const nitros::NitrosImage & msg);
+  void encode_mono8(const nitros::NitrosImage & msg);
   void convert_and_encode(const nitros::NitrosImage & msg);
+
+  // Ensure mono8_uv_staging_ptr_ holds a neutral-chroma (UV = 128) plane of
+  // exactly uv_size bytes, (re)allocating and filling it on first use or on a
+  // size change. Returns false (and logs) if a CUDA allocation/memset fails.
+  bool ensure_mono8_uv_staging(size_t uv_size);
 
   // Callback invoked when encoder produces compressed frame
   void on_encoded_frame(EncodedFrame && frame);
@@ -93,6 +99,13 @@ private:
   VPIStream vpi_stream_{nullptr};
   codec::VPIFormatConverter vpi_converter_;
   uint8_t * nv12_staging_ptr_{nullptr};
+
+  // Neutral chroma (UV = 128) plane reused for mono8 -> NV12 encoding.
+  // The mono8 luma maps directly to the NV12 Y plane, so only a constant
+  // grayscale chroma plane needs to be synthesized once.
+  uint8_t * mono8_uv_staging_ptr_{nullptr};
+  // Allocated size of mono8_uv_staging_ptr_; triggers reallocation on change.
+  size_t mono8_uv_staging_size_{0};
 
   // Memory pool for output compressed H.264 data
   nitros::CUDAMemoryPool output_pool_;

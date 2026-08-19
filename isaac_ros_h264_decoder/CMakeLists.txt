@@ -36,20 +36,17 @@ add_library(nvbuf_fdmap SHARED IMPORTED)
 add_library(nvbufsurface SHARED IMPORTED)
 add_library(nvbufsurftransform SHARED IMPORTED)
 add_library(nvv4l2 SHARED IMPORTED)
-add_library(cuvidv4l2 SHARED IMPORTED)
 
 if(${ARCHITECTURE} STREQUAL "x86_64")
   set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbuf_fdmap.so)
   set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurface.so)
   set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurftransform.so)
   set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvv4l2.so)
-  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libcuvidv4l2.so)
 elseif(${ARCHITECTURE} STREQUAL "aarch64")
   set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbuf_fdmap.so.1.0.0)
   set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurface.so)
   set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurftransform.so)
   set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvv4l2.so)
-  set_property(TARGET cuvidv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvcuvidv4l2.so)
 endif()
 
 # DecoderNode (GXF-free implementation)
@@ -69,7 +66,6 @@ target_link_libraries(decoder_node
   CUDA::cuda_driver
   CUDA::cudart
   vpi
-  cuvidv4l2
   nvv4l2
   nvbufsurface
   nvbuf_fdmap
