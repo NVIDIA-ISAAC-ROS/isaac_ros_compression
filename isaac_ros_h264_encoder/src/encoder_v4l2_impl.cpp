@@ -86,7 +86,7 @@ struct V4L2EncoderImpl
   uint32_t raw_pixfmt{0};
   uint32_t encoder_pixfmt{V4L2_PIX_FMT_H264};
   uint32_t level{14};
-  uint32_t hw_preset_type{0};
+  uint32_t hw_preset_type{1};
   uint32_t iframe_interval{5};
   uint32_t idr_interval{5};
   uint32_t entropy{1};  // 0: CAVLC, 1: CABAC
@@ -360,12 +360,15 @@ int V4L2EncoderImpl::reqbufs_capture_plane()
     }
 
     if (!is_cuvid) {
-      // For Tegra: Map NVBUF_MEM_SURFACE_ARRAY to CUDA buffer for GPU access
-      // This populates nvbuf->surfaceList[0].mappedAddr.cudaPtr
-      if (NvBufSurfaceMapCudaBuffer(nvbuf, 0) != 0) {
+      // For Tegra: map the compressed-bitstream capture buffer to CPU memory
+      // so the encoder thread can copy the bitstream into EncodedFrame::data.
+      // cudaHostRegister is not used here because the NVENC bitstream buffer
+      // is not a CUDA-registerable dmabuf on this platform; the frame.data
+      // host-vector fallback in EncoderNode already handles the H2D copy.
+      if (NvBufSurfaceMap(nvbuf, 0, 0, NVBUF_MAP_READ_WRITE) != 0) {
         RCLCPP_ERROR(
           rclcpp::get_logger("V4L2Encoder"),
-          "[V4L2Encoder] NvBufSurfaceMapCudaBuffer capture failed");
+          "[V4L2Encoder] NvBufSurfaceMap capture failed");
         return -1;
       }
     }
@@ -546,18 +549,21 @@ void encoder_thread_func(V4L2EncoderImpl * ctx)
       frame.device_ptr = nvbuf->surfaceList[0].dataPtr;
       frame.size = bs_size;
     } else {
-      // For Tegra, we mapped NVBUF_MEM_SURFACE_ARRAY to CUDA buffer via NvBufSurfaceMapCudaBuffer.
-      // The cudaPtr field contains an NvBufSurfaceCudaBuffer struct with dataPtr.
-      NvBufSurfaceCudaBuffer * cuda_buf = reinterpret_cast<NvBufSurfaceCudaBuffer *>(
-        nvbuf->surfaceList[0].mappedAddr.cudaPtr);
-      if (cuda_buf && cuda_buf->dataPtr) {
-        frame.device_ptr = cuda_buf->dataPtr;
-        frame.size = bs_size;
-      } else {
+      // For Tegra (nvgpu): expose the CPU-mapped NVENC capture buffer pointer directly.
+      // EncoderNode::on_encoded_frame issues a synchronous cudaMemcpy from this
+      // pointer to the output tensor before the callback returns, after which
+      // the V4L2 buffer is re-enqueued. NvBufSurfaceSyncForCpu flushes the
+      // DMA-writer cache so the read sees the bytes NVENC just wrote; see the
+      // sibling GXF video_encoder response at videoencoder_response.cpp:94-96.
+      NvBufSurfaceSyncForCpu(nvbuf, 0, 0);
+      void * host_ptr = nvbuf->surfaceList[0].mappedAddr.addr[0];
+      if (host_ptr == nullptr) {
         RCLCPP_ERROR(rclcpp::get_logger("V4L2Encoder"),
-          "[V4L2Encoder] Tegra CUDA buffer mapping not available");
+          "[V4L2Encoder] capture buffer not mapped");
         continue;
       }
+      frame.host_ptr = host_ptr;
+      frame.size = bs_size;
     }
 
     ctx->frames_out++;
@@ -689,14 +695,24 @@ bool V4L2Encoder::initialize(const EncoderConfig & config)
   v4l2_ioctl::set_h264_profile(impl_->dev_fd, impl_->profile);
 
   if (impl_->is_cuvid) {
-    v4l2_ioctl::set_cuda_preset(impl_->dev_fd, impl_->hw_preset_type);
+    if (v4l2_ioctl::set_cuda_preset(impl_->dev_fd, impl_->hw_preset_type) < 0) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("V4L2Encoder"),
+        "[V4L2Encoder] Failed to set CUVID hardware preset");
+      return false;
+    }
     // Insert SPS/PPS before each IDR frame
     v4l2_ioctl::set_insert_sps_pps_at_idr(impl_->dev_fd, true);
     if (impl_->rate_control_mode == 0) {
       v4l2_ioctl::set_h264_qp(impl_->dev_fd, impl_->qp, impl_->qp, impl_->qp);
     }
   } else {
-    v4l2_ioctl::set_hw_preset_type(impl_->dev_fd, impl_->hw_preset_type);
+    if (v4l2_ioctl::set_hw_preset_type(impl_->dev_fd, impl_->hw_preset_type) < 0) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("V4L2Encoder"),
+        "[V4L2Encoder] Failed to set Tegra hardware preset");
+      return false;
+    }
     v4l2_ioctl::set_entropy_mode(impl_->dev_fd, impl_->entropy == 1);
     v4l2_ioctl::set_bitrate(impl_->dev_fd, impl_->bitrate);
     v4l2_ioctl::set_h264_level(impl_->dev_fd, impl_->level);
@@ -831,7 +847,7 @@ void V4L2Encoder::shutdown()
         NvBufSurface * nvbuf = reinterpret_cast<NvBufSurface *>(
           impl_->capture_buffers[i].buf_surface);
         if (!impl_->is_cuvid) {
-          NvBufSurfaceUnMapCudaBuffer(nvbuf, 0);
+          NvBufSurfaceUnMap(nvbuf, 0, 0);
         }
         impl_->capture_buffers[i].buf_surface = nullptr;
       }

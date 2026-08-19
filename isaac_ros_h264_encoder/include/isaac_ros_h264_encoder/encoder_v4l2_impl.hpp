@@ -43,7 +43,7 @@ struct EncoderConfig
   uint32_t height{1200};            ///< Input frame height in pixels
   uint32_t qp{20};                  ///< Quantization parameter (0-51)
   int32_t profile{0};               ///< H264 profile: 0=Baseline, 1=Main, 2=High
-  int32_t hw_preset_type{0};        ///< HW preset: 0-3 for Tegra, 0-7 for CUVID
+  int32_t hw_preset_type{1};        ///< HW preset: 1-4 for Tegra, 1-7 for CUVID
   int32_t iframe_interval{5};       ///< Interval between I-frames
   int32_t idr_interval{256};        ///< Interval between IDR frames
   int32_t num_bframes{0};           ///< Number of B-frames between P-frames
@@ -60,7 +60,12 @@ struct EncodedFrame
   std::vector<uint8_t> data;  ///< H264 bitstream data (host memory, for Tegra)
   /// Device pointer to H264 data (for dGPU, valid until callback returns)
   const void * device_ptr{nullptr};
-  size_t size{0};              ///< Size in bytes (used with device_ptr)
+  /// Host pointer to H264 data (Tegra (nvgpu): CPU-mapped NVENC capture buffer).
+  /// Valid only during the callback — consumer must issue a synchronous
+  /// cudaMemcpy(..., cudaMemcpyHostToDevice) before returning; the encoder
+  /// thread re-enqueues the V4L2 capture buffer immediately on return.
+  const void * host_ptr{nullptr};
+  size_t size{0};              ///< Size in bytes (used with device_ptr / host_ptr)
   uint64_t timestamp_ns{0};    ///< Timestamp in nanoseconds
   std::string frame_id;        ///< Frame ID from input message
   bool is_keyframe{false};     ///< True if this is an I-frame

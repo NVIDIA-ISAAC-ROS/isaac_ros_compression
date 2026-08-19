@@ -57,7 +57,7 @@ private:
   // Subscription to input H264 compressed image messages
   rclcpp::Subscription<nitros::NitrosCompressedImage>::SharedPtr compressed_sub_;
 
-  // Publisher for output RGB8 image messages
+  // Publisher for output uncompressed image messages (rgb8, nv12, or mono8)
   rclcpp::Publisher<nitros::NitrosImage>::SharedPtr image_pub_;
 
   // V4L2 decoder implementation
@@ -68,15 +68,19 @@ private:
   bool low_latency_;
   int32_t output_width_;
   int32_t output_height_;
+  // Encoding of the published uncompressed image: "rgb8" (default, via VPI
+  // NV12->RGB8 conversion), "nv12" (decoder-native, no conversion), or "mono8"
+  // (luma/Y plane only, for grayscale/infrared streams).
+  std::string output_encoding_;
 
   // CUDA stream for async memory operations
   cudaStream_t cuda_stream_{nullptr};
 
-  // VPI NV12 -> RGB8 color conversion
+  // VPI NV12 -> RGB8 color conversion (only used when output_encoding_ == "rgb8")
   VPIStream vpi_stream_{nullptr};
   codec::VPIFormatConverter vpi_converter_;
 
-  // Memory pool for RGB8 output images
+  // Memory pool for uncompressed output images
   nitros::CUDAMemoryPool output_pool_;
   static constexpr size_t kOutputPoolBlockCount = 40;
 

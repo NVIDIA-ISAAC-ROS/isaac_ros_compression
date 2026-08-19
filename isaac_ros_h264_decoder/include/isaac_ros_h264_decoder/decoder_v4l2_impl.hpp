@@ -47,7 +47,12 @@ struct DecoderConfig
 /// Output structure containing decoded frame data
 struct DecodedFrame
 {
-  uint8_t * device_ptr{nullptr};    ///< Decoded pixel data on GPU (NV12 format)
+  uint8_t * device_ptr{nullptr};     ///< Decoded pixel data on GPU (NV12 Y plane)
+  uint8_t * uv_device_ptr{nullptr};  ///< UV plane device pointer. When nullptr, UV is at
+                                     ///< device_ptr + uv_offset (cuvid single-buffer layout).
+                                     ///< When set (Tegra (nvgpu): cudaHostRegister path), Y and UV
+                                     ///< come from separate NvBufSurfaceMap plane mappings
+                                     ///< and are not necessarily contiguous.
   uint32_t width{0};                ///< Frame width in pixels
   uint32_t height{0};               ///< Frame height in pixels
   uint32_t y_pitch{0};              ///< Y plane pitch (stride) in bytes
