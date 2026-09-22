@@ -57,10 +57,10 @@ def generate_launch_description():
         namespace='',
         executable='component_container_mt',
         composable_node_descriptions=IsaacROSStereoH264DecoderLaunchFragment
-        .get_composable_nodes().values(),
+        .get_composable_nodes({}).values(),
         output='screen'
     )
 
     return launch.LaunchDescription(
         [decoder_container] +
-        IsaacROSStereoH264DecoderLaunchFragment.get_launch_actions().values())
+        list(IsaacROSStereoH264DecoderLaunchFragment.get_launch_actions({}).values()))

@@ -25,9 +25,8 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "isaac_ros_nitros_image_type/nitros_image.hpp"
-#include "isaac_ros_nitros_compressed_image_type/nitros_compressed_image.hpp"
-#include "isaac_ros_nitros/types/cuda_memory_pool.hpp"
+#include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/compressed_image.hpp"
 #include "isaac_ros_h264_decoder/decoder_v4l2_impl.hpp"
 #include "vpi_format_converter.hpp"
 
@@ -49,16 +48,16 @@ public:
 
 private:
   // Callback for incoming H264 compressed image messages
-  void compressed_callback(nitros::NitrosCompressedImage::SharedPtr msg);
+  void compressed_callback(const sensor_msgs::msg::CompressedImage::ConstSharedPtr & msg);
 
   // Callback invoked when decoder produces uncompressed frame
   void on_decoded_frame(DecodedFrame && frame);
 
   // Subscription to input H264 compressed image messages
-  rclcpp::Subscription<nitros::NitrosCompressedImage>::SharedPtr compressed_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr compressed_sub_;
 
   // Publisher for output uncompressed image messages (rgb8, nv12, or mono8)
-  rclcpp::Publisher<nitros::NitrosImage>::SharedPtr image_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_pub_;
 
   // V4L2 decoder implementation
   std::unique_ptr<V4L2Decoder> decoder_;
@@ -78,11 +77,7 @@ private:
 
   // VPI NV12 -> RGB8 color conversion (only used when output_encoding_ == "rgb8")
   VPIStream vpi_stream_{nullptr};
-  codec::VPIFormatConverter vpi_converter_;
-
-  // Memory pool for uncompressed output images
-  nitros::CUDAMemoryPool output_pool_;
-  static constexpr size_t kOutputPoolBlockCount = 40;
+  VPIImage vpi_input_{nullptr};
 
   // Track frame drops between publishes
   uint64_t last_frames_dropped_{0};

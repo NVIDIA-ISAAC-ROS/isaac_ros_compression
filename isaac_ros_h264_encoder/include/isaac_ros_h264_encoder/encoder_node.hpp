@@ -24,9 +24,8 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "isaac_ros_nitros_image_type/nitros_image.hpp"
-#include "isaac_ros_nitros_compressed_image_type/nitros_compressed_image.hpp"
-#include "isaac_ros_nitros/types/cuda_memory_pool.hpp"
+#include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/compressed_image.hpp"
 #include "isaac_ros_h264_encoder/encoder_v4l2_impl.hpp"
 #include "vpi_format_converter.hpp"
 
@@ -51,10 +50,10 @@ private:
   // Called once on first received frame.
   bool initialize_encoder(uint32_t width, uint32_t height);
 
-  void image_callback(nitros::NitrosImage::SharedPtr msg);
-  void encode_nv12(const nitros::NitrosImage & msg);
-  void encode_mono8(const nitros::NitrosImage & msg);
-  void convert_and_encode(const nitros::NitrosImage & msg);
+  void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr & msg);
+  void encode_nv12(const sensor_msgs::msg::Image & msg);
+  void encode_mono8(const sensor_msgs::msg::Image & msg);
+  void convert_and_encode(const sensor_msgs::msg::Image & msg);
 
   // Ensure mono8_uv_staging_ptr_ holds a neutral-chroma (UV = 128) plane of
   // exactly uv_size bytes, (re)allocating and filling it on first use or on a
@@ -65,10 +64,10 @@ private:
   void on_encoded_frame(EncodedFrame && frame);
 
   // Subscription to input NV12 image messages
-  rclcpp::Subscription<nitros::NitrosImage>::SharedPtr image_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
 
   // Publisher for output H264 compressed image messages
-  rclcpp::Publisher<nitros::NitrosCompressedImage>::SharedPtr compressed_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr compressed_pub_;
 
   // V4L2 encoder implementation
   std::unique_ptr<V4L2Encoder> encoder_;
@@ -106,9 +105,6 @@ private:
   uint8_t * mono8_uv_staging_ptr_{nullptr};
   // Allocated size of mono8_uv_staging_ptr_; triggers reallocation on change.
   size_t mono8_uv_staging_size_{0};
-
-  // Memory pool for output compressed H.264 data
-  nitros::CUDAMemoryPool output_pool_;
 
   // Track frame drops between publishes
   uint64_t last_frames_dropped_{0};

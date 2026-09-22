@@ -54,13 +54,6 @@ WIDTH = 256
 # Encoder input formats and the matching decoder `output_encoding` values.
 FORMATS = ['rgb8', 'nv12', 'mono8']
 
-# Encoding observed by a plain sensor_msgs/Image subscriber. The decoder emits a
-# NitrosImage in its configured `output_encoding`, but the NitrosImage ->
-# sensor_msgs/Image type adapter converts nv12 (and nv24) to rgb8 on the way out
-# to non-NITROS subscribers, since standard ROS consumers cannot handle NV12
-# device memory. rgb8/mono8 pass through unchanged.
-EXPECTED_ROS_ENCODING = {'rgb8': 'rgb8', 'nv12': 'rgb8', 'mono8': 'mono8'}
-
 # GPUs whose NVENC/NVDEC engines are unavailable or incompatible.
 UNSUPPORTED_COMPUTE_CAPS = ['8.0', '9.0', '10.0', '10.3']
 
@@ -214,11 +207,10 @@ class IsaacROSH264RoundTripTest(IsaacROSBaseTest):
 
             for fmt in FORMATS:
                 msg = received_messages[f'{fmt}/image_uncompressed'][0]
-                expected_encoding = EXPECTED_ROS_ENCODING[fmt]
                 self.assertEqual(
-                    msg.encoding, expected_encoding,
+                    msg.encoding, fmt,
                     f'For decoder output_encoding {fmt}, expected ROS encoding '
-                    f'{expected_encoding}, got {msg.encoding}')
+                    f'{fmt}, got {msg.encoding}')
                 self.assertEqual(msg.width, WIDTH)
                 self.assertEqual(msg.height, HEIGHT)
 
