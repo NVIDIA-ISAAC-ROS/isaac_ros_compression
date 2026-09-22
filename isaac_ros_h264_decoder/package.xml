@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_h264_decoder</name>
-  <version>4.6.0</version>
+  <version>5.0.0</version>
   <description>H.264 Decoder</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
@@ -41,17 +41,18 @@
   <depend>sensor_msgs_py</depend>
   <depend>isaac_ros_common</depend>
   <depend>isaac_ros_image_proc</depend>
-  <depend>isaac_ros_nitros</depend>
-  <depend>isaac_ros_nitros_image_type</depend>
-  <depend>isaac_ros_nitros_compressed_image_type</depend>
+  <depend>cuda_buffer</depend>
+  <depend>vpi_conversions</depend>
   <depend condition="$ISAAC_ROS_PLATFORM == amd64">nvv4l2</depend>
-  <depend>cuda-toolkit</depend>
+  <depend condition="$ISAAC_ROS_PLATFORM != arm64-fastos">cuda-toolkit-13-2</depend>
+  <depend condition="$ISAAC_ROS_PLATFORM == arm64-fastos">cuda-toolkit-13-0</depend>
 
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>isaac_ros_test</test_depend>
   <test_depend>isaac_ros_h264_encoder</test_depend>
+  <test_depend>python3-opencv</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

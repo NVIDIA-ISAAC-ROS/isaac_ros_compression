@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 
+#include "cuda_buffer/cuda_buffer_api.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
 
 namespace nvidia
@@ -29,12 +30,6 @@ namespace isaac_ros
 {
 namespace h264_encoder
 {
-
-namespace
-{
-// Memory pool configuration
-constexpr size_t kOutputPoolBlockCount = 40;
-}  // namespace
 
 EncoderNode::EncoderNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("h264_encoder", options),
@@ -88,13 +83,15 @@ EncoderNode::EncoderNode(const rclcpp::NodeOptions & options)
 
   rclcpp::SubscriptionOptions sub_options;
   sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+  // Accept GPU-backed image buffers; from_input_buffer promotes CPU buffers as needed.
+  sub_options.acceptable_buffer_backends = "any";
 
-  compressed_pub_ = create_publisher<nitros::NitrosCompressedImage>(
+  compressed_pub_ = create_publisher<sensor_msgs::msg::CompressedImage>(
     "image_compressed", rclcpp::QoS(1), pub_options);
 
-  image_sub_ = create_subscription<nitros::NitrosImage>(
+  image_sub_ = create_subscription<sensor_msgs::msg::Image>(
     "image_raw", rclcpp::QoS(1),
-    [this](nitros::NitrosImage::SharedPtr msg) {
+    [this](const sensor_msgs::msg::Image::ConstSharedPtr & msg) {
       image_callback(msg);
     },
     sub_options);
@@ -162,20 +159,6 @@ bool EncoderNode::initialize_encoder(uint32_t width, uint32_t height)
     return false;
   }
 
-  // Allocate conservative size for H.264 bitstream (raw NV12 size * 2 as upper bound)
-  size_t output_pool_block_size = static_cast<size_t>(width) * height * 3;
-  cudaError_t cuda_err = output_pool_.create(
-    output_pool_block_size, kOutputPoolBlockCount,
-    nitros::CUDAMemoryPool::MemoryType::Device);
-  if (cuda_err != cudaSuccess) {
-    RCLCPP_ERROR(
-      get_logger(), "[EncoderNode] Failed to create output memory pool: %s",
-      cudaGetErrorString(cuda_err));
-    encoder_->shutdown();
-    encoder_.reset();
-    return false;
-  }
-
   RCLCPP_INFO(
     get_logger(), "[EncoderNode] H264 Encoder initialized: %ux%u (accepts RGB8, NV12, or Mono8)",
     width, height);
@@ -198,8 +181,6 @@ EncoderNode::~EncoderNode()
     cudaFree(mono8_uv_staging_ptr_);
   }
 
-  output_pool_.destroy();
-
   if (input_stream_) {
     cudaStreamDestroy(input_stream_);
     input_stream_ = nullptr;
@@ -211,7 +192,7 @@ EncoderNode::~EncoderNode()
   }
 }
 
-void EncoderNode::image_callback(nitros::NitrosImage::SharedPtr msg)
+void EncoderNode::image_callback(const sensor_msgs::msg::Image::ConstSharedPtr & msg)
 {
   if (!encoder_initialized_) {
     uint32_t w = msg->width;
@@ -242,31 +223,29 @@ void EncoderNode::image_callback(nitros::NitrosImage::SharedPtr msg)
   }
 }
 
-void EncoderNode::encode_nv12(const nitros::NitrosImage & msg)
+void EncoderNode::encode_nv12(const sensor_msgs::msg::Image & msg)
 {
-  if (msg.num_planes() != 2) {
-    RCLCPP_ERROR(get_logger(), "[EncoderNode] NV12 requires 2 planes, got %zu", msg.num_planes());
-    return;
-  }
-
-  auto read_handle = msg.get_read_handle(input_stream_);
+  auto read_handle = cuda_buffer_backend::from_input_buffer(msg.data, input_stream_);
   const uint8_t * base_ptr = read_handle.get_ptr();
   if (!base_ptr) {
     RCLCPP_ERROR(get_logger(), "[EncoderNode] Input image buffer pointer is null");
     return;
   }
 
-  const uint8_t * y_ptr = base_ptr + msg.get_plane(0).offset;
-  const uint8_t * uv_ptr = base_ptr + msg.get_plane(1).offset;
-  uint32_t y_stride = msg.get_plane(0).stride;
-  uint32_t uv_stride = msg.get_plane(1).stride;
+  // Packed NV12 in a sensor_msgs::Image: the Y plane occupies `height` rows of
+  // `step` bytes, immediately followed by the interleaved UV plane. Both planes
+  // share the row stride `step`.
+  const uint8_t * y_ptr = base_ptr;
+  const uint8_t * uv_ptr = base_ptr + static_cast<size_t>(msg.step) * msg.height;
+  uint32_t y_stride = msg.step;
+  uint32_t uv_stride = msg.step;
 
-  uint64_t timestamp_ns = static_cast<uint64_t>(msg.timestamp_sec) * 1000000000ULL +
-    msg.timestamp_nsec;
+  uint64_t timestamp_ns = static_cast<uint64_t>(msg.header.stamp.sec) * 1000000000ULL +
+    msg.header.stamp.nanosec;
 
   if (!encoder_->encode_frame(
       y_ptr, uv_ptr, y_stride, uv_stride,
-      timestamp_ns, msg.frame_id, input_stream_))
+      timestamp_ns, msg.header.frame_id, input_stream_))
   {
     RCLCPP_ERROR(get_logger(), "[EncoderNode] Failed to encode frame");
   }
@@ -277,9 +256,9 @@ void EncoderNode::encode_nv12(const nitros::NitrosImage & msg)
 // fed straight in as Y and a constant neutral-chroma (UV = 128) plane is
 // synthesized once and reused. This is the inverse of the NV12->MONO8 Y-plane
 // copy used by isaac_ros_image_proc's ImageFormatConverterNode.
-void EncoderNode::encode_mono8(const nitros::NitrosImage & msg)
+void EncoderNode::encode_mono8(const sensor_msgs::msg::Image & msg)
 {
-  auto read_handle = msg.get_read_handle(input_stream_);
+  auto read_handle = cuda_buffer_backend::from_input_buffer(msg.data, input_stream_);
   const uint8_t * input_ptr = read_handle.get_ptr();
   if (!input_ptr) {
     RCLCPP_ERROR(get_logger(), "[EncoderNode] Input image buffer pointer is null");
@@ -302,14 +281,14 @@ void EncoderNode::encode_mono8(const nitros::NitrosImage & msg)
     return;
   }
 
-  uint64_t timestamp_ns = static_cast<uint64_t>(msg.timestamp_sec) * 1000000000ULL +
-    msg.timestamp_nsec;
+  uint64_t timestamp_ns = static_cast<uint64_t>(msg.header.stamp.sec) * 1000000000ULL +
+    msg.header.stamp.nanosec;
 
   // UV staging is a tightly packed neutral-chroma plane at the encoder's width,
   // so its row stride equals the configured width.
   if (!encoder_->encode_frame(
       input_ptr, mono8_uv_staging_ptr_, msg.step, enc_config.width,
-      timestamp_ns, msg.frame_id, input_stream_))
+      timestamp_ns, msg.header.frame_id, input_stream_))
   {
     RCLCPP_ERROR(get_logger(), "[EncoderNode] Failed to encode frame");
   }
@@ -349,7 +328,7 @@ bool EncoderNode::ensure_mono8_uv_staging(size_t uv_size)
 // The V4L2 encoder requires NV12 input natively. This conversion maintains the
 // RGB8 input contract for upstream producers. Will be removed in the next major
 // release; producers should migrate to supply NV12 directly.
-void EncoderNode::convert_and_encode(const nitros::NitrosImage & msg)
+void EncoderNode::convert_and_encode(const sensor_msgs::msg::Image & msg)
 {
   uint32_t width = msg.width;
   uint32_t height = msg.height;
@@ -364,7 +343,7 @@ void EncoderNode::convert_and_encode(const nitros::NitrosImage & msg)
     }
   }
 
-  auto read_handle = msg.get_read_handle(input_stream_);
+  auto read_handle = cuda_buffer_backend::from_input_buffer(msg.data, input_stream_);
   const uint8_t * input_ptr = read_handle.get_ptr();
   if (!input_ptr) {
     RCLCPP_ERROR(get_logger(), "[EncoderNode] Input image buffer pointer is null");
@@ -391,12 +370,12 @@ void EncoderNode::convert_and_encode(const nitros::NitrosImage & msg)
     return;
   }
 
-  uint64_t timestamp_ns = static_cast<uint64_t>(msg.timestamp_sec) * 1000000000ULL +
-    msg.timestamp_nsec;
+  uint64_t timestamp_ns = static_cast<uint64_t>(msg.header.stamp.sec) * 1000000000ULL +
+    msg.header.stamp.nanosec;
 
   if (!encoder_->encode_frame(
       nv12_staging_ptr_, uv_ptr, width, width,
-      timestamp_ns, msg.frame_id, input_stream_))
+      timestamp_ns, msg.header.frame_id, input_stream_))
   {
     RCLCPP_ERROR(get_logger(), "[EncoderNode] Failed to encode frame");
   }
@@ -410,63 +389,55 @@ void EncoderNode::on_encoded_frame(EncodedFrame && frame)
     frame.size :
     frame.data.size();
 
-  // Validate encoded frame size against static pool capacity
-  if (size > output_pool_.block_size()) {
-    RCLCPP_ERROR(
-      get_logger(),
-      "[EncoderNode] Encoded frame size (%zu bytes) exceeds pool capacity (%zu bytes). "
-      "Increase encoder parameters or reduce bitrate/quality.",
-      size, output_pool_.block_size());
-    return;
+  auto output = std::make_unique<sensor_msgs::msg::CompressedImage>();
+  output->format = "h264";
+  output->data = cuda_buffer_backend::allocate_buffer(size);
+
+  // Scope the write handle so its CUDA completion event is recorded on
+  // output_stream_ before the message is published. on_encoded_frame runs on the
+  // encoder_thread, so output_stream_ (not the executor's input_stream_) is used.
+  {
+    auto write_handle = cuda_buffer_backend::from_output_buffer(output->data, output_stream_);
+    uint8_t * dst = write_handle.get_ptr();
+
+    cudaError_t err;
+    if (frame.device_ptr) {
+      // dGPU path: dataPtr on the V4L2 capture buffer is already CUDA device
+      // memory, so a single D2D copy moves the bitstream to the output buffer.
+      err = cudaMemcpyAsync(
+        dst, frame.device_ptr, size, cudaMemcpyDeviceToDevice, output_stream_);
+    } else if (frame.host_ptr) {
+      // Tegra (nvgpu) path: the NVENC bitstream buffer is CPU-mapped. Issue
+      // a synchronous cudaMemcpy to the output buffer. This blocks until the copy is done,
+      // so the V4L2 capture buffer is safe to re-enqueue when this callback returns.
+      err = cudaMemcpy(dst, frame.host_ptr, size, cudaMemcpyHostToDevice);
+    } else {
+      // Fallback: H2D copy from host vector to output (device)
+      // This path should not be hit in normal operation.
+      RCLCPP_WARN_ONCE(get_logger(), "[EncoderNode] Using fallback H2D copy path");
+      err = cudaMemcpyAsync(
+        dst, frame.data.data(), size, cudaMemcpyHostToDevice, output_stream_);
+    }
+    if (err != cudaSuccess) {
+      RCLCPP_ERROR(
+        get_logger(), "[EncoderNode] cudaMemcpyAsync failed: %s", cudaGetErrorString(err));
+      return;
+    }
+
+    // CRITICAL: Wait for async copy to complete before returning to encoder_thread.
+    // After this callback returns, the V4L2 capture buffer is re-queued and may be
+    // overwritten by the next encoded frame. Without this sync, the encoder can
+    // overwrite the buffer while copy is in progress, causing data corruption.
+    err = cudaStreamSynchronize(output_stream_);
+    if (err != cudaSuccess) {
+      RCLCPP_ERROR(
+        get_logger(), "[EncoderNode] cudaStreamSynchronize failed: %s", cudaGetErrorString(err));
+    }
   }
 
-  nitros::NitrosCompressedImage output;
-
-  // Use output_stream_ here since on_encoded_frame is called from encoder_thread,
-  // not the ROS executor thread that calls image_callback
-  auto write_handle = output.from_pool(output_pool_, size, "h264", output_stream_);
-
-  cudaError_t err;
-  if (frame.device_ptr) {
-    // dGPU path: dataPtr on the V4L2 capture buffer is already CUDA device
-    // memory, so a single D2D copy moves the bitstream to the output buffer.
-    err = cudaMemcpyAsync(
-      write_handle.get_ptr(), frame.device_ptr, size,
-      cudaMemcpyDeviceToDevice, output_stream_);
-  } else if (frame.host_ptr) {
-    // Tegra (nvgpu) path: the NVENC bitstream buffer is CPU-mapped. Issue
-    // a synchronous cudaMemcpy to the output buffer. This blocks until the copy is done,
-    // so the V4L2 capture buffer is safe to re-enqueue when this callback returns.
-    err = cudaMemcpy(
-      write_handle.get_ptr(), frame.host_ptr, size,
-      cudaMemcpyHostToDevice);
-  } else {
-    // Fallback: H2D copy from host vector to output (device)
-    // This path should not be hit in normal operation.
-    RCLCPP_WARN_ONCE(get_logger(), "[EncoderNode] Using fallback H2D copy path");
-    err = cudaMemcpyAsync(
-      write_handle.get_ptr(), frame.data.data(), size,
-      cudaMemcpyHostToDevice, output_stream_);
-  }
-  if (err != cudaSuccess) {
-    RCLCPP_ERROR(
-      get_logger(), "[EncoderNode] cudaMemcpyAsync failed: %s", cudaGetErrorString(err));
-    return;
-  }
-
-  // CRITICAL: Wait for async copy to complete before returning to encoder_thread.
-  // After this callback returns, the V4L2 capture buffer is re-queued and may be
-  // overwritten by the next encoded frame. Without this sync, the encoder can
-  // overwrite the buffer while copy is in progress, causing data corruption.
-  err = cudaStreamSynchronize(output_stream_);
-  if (err != cudaSuccess) {
-    RCLCPP_ERROR(
-      get_logger(), "[EncoderNode] cudaStreamSynchronize failed: %s", cudaGetErrorString(err));
-  }
-
-  output.timestamp_sec = static_cast<uint32_t>(frame.timestamp_ns / 1000000000ULL);
-  output.timestamp_nsec = static_cast<uint32_t>(frame.timestamp_ns % 1000000000ULL);
-  output.frame_id = frame.frame_id;
+  output->header.stamp.sec = static_cast<int32_t>(frame.timestamp_ns / 1000000000ULL);
+  output->header.stamp.nanosec = static_cast<uint32_t>(frame.timestamp_ns % 1000000000ULL);
+  output->header.frame_id = frame.frame_id;
 
   // Check for frame drops since last publish
   auto stats = encoder_->get_frame_stats();
@@ -481,7 +452,7 @@ void EncoderNode::on_encoded_frame(EncodedFrame && frame)
     last_frames_dropped_ = stats.frames_dropped;
   }
 
-  compressed_pub_->publish(output);
+  compressed_pub_->publish(std::move(output));
 }
 
 }  // namespace h264_encoder
