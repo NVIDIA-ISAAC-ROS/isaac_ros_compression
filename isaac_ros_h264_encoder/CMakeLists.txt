@@ -38,11 +38,13 @@ add_library(nvbufsurftransform SHARED IMPORTED)
 add_library(nvv4l2 SHARED IMPORTED)
 
 if(${ARCHITECTURE} STREQUAL "x86_64")
-  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbuf_fdmap.so)
-  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurface.so)
-  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurftransform.so)
-  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvv4l2.so)
+  set(NV_CODEC_RPATH "/opt/nvidia/deepstream/deepstream-9.1/lib")
+  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION ${NV_CODEC_RPATH}/libnvbuf_fdmap.so)
+  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION ${NV_CODEC_RPATH}/libnvbufsurface.so)
+  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION ${NV_CODEC_RPATH}/libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION ${NV_CODEC_RPATH}/libnvv4l2.so)
 elseif(${ARCHITECTURE} STREQUAL "aarch64")
+  set(NV_CODEC_RPATH "/usr/lib/aarch64-linux-gnu/nvidia:/opt/deepstream_tegra/lib")
   set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbuf_fdmap.so.1.0.0)
   set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurface.so)
   set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurftransform.so)
@@ -63,6 +65,7 @@ target_include_directories(encoder_node PRIVATE
 )
 
 target_link_libraries(encoder_node
+  ${CMAKE_DL_LIBS}
   CUDA::cuda_driver
   CUDA::cudart
   vpi
@@ -79,9 +82,8 @@ set_target_properties(encoder_node PROPERTIES
   BUILD_RPATH_USE_ORIGIN TRUE
   INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-# Ensure NVIDIA multimedia libraries can be resolved in non-login runtimes on FastOS (DGX Spark).
-if(${ARCHITECTURE} STREQUAL "aarch64")
-  set(NV_CODEC_RPATH "/usr/lib/aarch64-linux-gnu/nvidia:/opt/deepstream_tegra/lib")
+# Ensure NVIDIA multimedia libraries can be resolved in non-login runtimes.
+if(${ARCHITECTURE} STREQUAL "x86_64" OR ${ARCHITECTURE} STREQUAL "aarch64")
   set_target_properties(encoder_node PROPERTIES INSTALL_RPATH "${NV_CODEC_RPATH}")
   target_link_options(encoder_node PRIVATE "-Wl,--disable-new-dtags")
 endif()

@@ -19,6 +19,7 @@ import os
 import pathlib
 import platform
 import time
+import unittest
 
 from isaac_ros_test import IsaacROSBaseTest, JSONConversion
 
@@ -26,6 +27,7 @@ from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
 import launch_testing
+import launch_testing.asserts
 import pytest
 import rclpy
 
@@ -129,3 +131,11 @@ class IsaacROSEncoderTest(IsaacROSBaseTest):
         finally:
             [self.node.destroy_subscription(sub) for sub in subs]
             self.node.destroy_publisher(input_image_pub)
+
+
+@launch_testing.post_shutdown_test()
+class TestEncoderShutdown(unittest.TestCase):
+    """Check teardown as well as successful frame encoding."""
+
+    def test_exit_codes(self, proc_info):
+        launch_testing.asserts.assertExitCodes(proc_info)
