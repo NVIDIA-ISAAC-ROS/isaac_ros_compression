@@ -17,6 +17,8 @@
 
 #include "isaac_ros_h264_encoder/encoder_node.hpp"
 
+#include <dlfcn.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -30,6 +32,36 @@ namespace isaac_ros
 {
 namespace h264_encoder
 {
+
+namespace
+{
+
+void keep_vpi_loaded(const rclcpp::Logger & logger)
+{
+  // VPI 4.1.4 can return into unmapped code during process exit after a ROS
+  // component unloads it. Keep the linked VPI library resident until the SDK
+  // fixes its shutdown lifetime handling. Resolve its actual path so this also
+  // works with relocated installations, without requiring LD_PRELOAD.
+  Dl_info library_info{};
+  if (dladdr(reinterpret_cast<const void *>(vpiStreamCreateWrapperCUDA), &library_info) == 0) {
+    RCLCPP_WARN(
+      logger, "[EncoderNode] Could not locate the loaded VPI library; "
+      "shutdown workaround unavailable");
+    return;
+  }
+  void * handle = dlopen(library_info.dli_fname, RTLD_NOW | RTLD_NOLOAD | RTLD_NODELETE);
+  if (handle == nullptr) {
+    const char * error = dlerror();
+    RCLCPP_WARN(
+      logger, "[EncoderNode] Could not retain VPI: %s; shutdown workaround unavailable",
+      error != nullptr ? error : "unknown dynamic loader error");
+    return;
+  }
+  // RTLD_NODELETE preserves the mapping after this extra handle is released.
+  dlclose(handle);
+}
+
+}  // namespace
 
 EncoderNode::EncoderNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("h264_encoder", options),
@@ -48,6 +80,8 @@ EncoderNode::EncoderNode(const rclcpp::NodeOptions & options)
   config_(declare_parameter<std::string>("config", "pframe_cqp"))
 {
   RCLCPP_INFO(get_logger(), "[EncoderNode] Initializing H264 Encoder Node");
+
+  keep_vpi_loaded(get_logger());
 
   // Create separate streams for input and output paths to avoid thread contention:
   // - input_stream_: used by image_callback (ROS executor thread)

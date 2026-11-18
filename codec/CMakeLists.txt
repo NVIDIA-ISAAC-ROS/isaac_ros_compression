@@ -72,11 +72,13 @@ execute_process(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE
 message( STATUS "Architecture: ${ARCHITECTURE}" )
 
 if( ${ARCHITECTURE} STREQUAL "x86_64" )
-  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbuf_fdmap.so)
-  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurface.so)
-  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvbufsurftransform.so)
-  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION /usr/lib/x86_64-linux-gnu/libnvv4l2.so)
+  set(NV_CODEC_RPATH "/opt/nvidia/deepstream/deepstream-9.1/lib")
+  set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION ${NV_CODEC_RPATH}/libnvbuf_fdmap.so)
+  set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION ${NV_CODEC_RPATH}/libnvbufsurface.so)
+  set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION ${NV_CODEC_RPATH}/libnvbufsurftransform.so)
+  set_property(TARGET nvv4l2 PROPERTY IMPORTED_LOCATION ${NV_CODEC_RPATH}/libnvv4l2.so)
 elseif( ${ARCHITECTURE} STREQUAL "aarch64" )
+  set(NV_CODEC_RPATH "/usr/lib/aarch64-linux-gnu/nvidia:/opt/deepstream_tegra/lib")
   set_property(TARGET nvbuf_fdmap PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbuf_fdmap.so.1.0.0)
   set_property(TARGET nvbufsurface PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurface.so)
   set_property(TARGET nvbufsurftransform PROPERTY IMPORTED_LOCATION /usr/lib/aarch64-linux-gnu/nvidia/libnvbufsurftransform.so)
@@ -103,10 +105,8 @@ target_link_libraries(gxf_video_decoder_extension
   nvbufsurftransform
 )
 
-# Ensure NVIDIA multimedia libraries can be resolved in non-login runtimes on FastOS.
-if( ${ARCHITECTURE} STREQUAL "aarch64" )
-  set(NV_CODEC_RPATH "/usr/lib/aarch64-linux-gnu/nvidia:/opt/deepstream_tegra/lib")
-
+# Ensure NVIDIA multimedia libraries can be resolved in non-login runtimes.
+if( ${ARCHITECTURE} STREQUAL "x86_64" OR ${ARCHITECTURE} STREQUAL "aarch64" )
   set_target_properties(gxf_video_encoder_extension PROPERTIES
     BUILD_WITH_INSTALL_RPATH TRUE
     BUILD_RPATH_USE_ORIGIN TRUE
@@ -121,7 +121,7 @@ if( ${ARCHITECTURE} STREQUAL "aarch64" )
     INSTALL_RPATH "${NV_CODEC_RPATH}"
   )
 
-  # Use DT_RPATH so transitive dependencies also honor this path at runtime.
+  # Use DT_RPATH so transitive codec dependencies also honor this path.
   target_link_options(gxf_video_encoder_extension PRIVATE "-Wl,--disable-new-dtags")
   target_link_options(gxf_video_decoder_extension PRIVATE "-Wl,--disable-new-dtags")
 endif()
